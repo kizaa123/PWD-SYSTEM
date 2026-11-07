@@ -30,12 +30,12 @@ export function completedApplicationForYear(profileId: string, year: number) {
 export function sqlSubstantiveYearApplication(alias = "", yearParam = "?"): string {
   const p = alias ? `${alias}.` : "";
   return `${p}application_year = ${yearParam}
-    AND ${sqlApplicationIsSubstantive(alias || "a")}`;
+    AND ${sqlApplicationIsSubstantive(alias || undefined)}`;
 }
 
 /** Whether an applications row counts as a real support request (excludes bare registration drafts). */
-export function sqlApplicationIsSubstantive(alias = "a"): string {
-  const p = `${alias}.`;
+export function sqlApplicationIsSubstantive(alias?: string): string {
+  const p = alias ? `${alias}.` : "";
   return `${p}status NOT IN ('cancelled', 'rejected')
     AND (${p}status != 'registration' OR ${p}office_use_qualified IN ('qualified', 'not_qualified'))`;
 }
