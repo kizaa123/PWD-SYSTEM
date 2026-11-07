@@ -153,6 +153,7 @@ authRouter.get("/profile-photo", requireAuth, (req, res) => {
   if (!person?.photo_path?.trim()) return res.status(404).json({ error: "No profile photo on file" });
   const filePath = path.join(uploadRoot, person.photo_path);
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: "Photo file missing" });
+  res.setHeader("Cache-Control", "private, no-store");
   res.sendFile(filePath);
 });
 

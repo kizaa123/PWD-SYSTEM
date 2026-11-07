@@ -21,6 +21,7 @@ type AuthState = {
   has: (...perm: string[]) => boolean;
   isRole: (...roles: string[]) => boolean;
   refresh: () => Promise<void>;
+  applyProfilePhoto: (photoPath: string) => void;
 };
 
 const Ctx = createContext<AuthState | null>(null);
@@ -110,6 +111,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       has: (...perm) => Boolean(user && perm.some((p) => user.permissions.includes(p))),
       isRole: (...roles) => Boolean(user && roles.some((r) => user.roles.includes(r))),
       refresh,
+      applyProfilePhoto(photoPath: string) {
+        setPerson((prev) => {
+          const next = { ...(prev ?? {}), photo_path: photoPath };
+          const me: MePayload = {
+            user: user!,
+            profile,
+            person: next,
+          };
+          if (user) writeCachedMe(me);
+          return next;
+        });
+      },
     }),
     [user, profile, person, loading],
   );

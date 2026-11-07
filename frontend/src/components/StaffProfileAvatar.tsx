@@ -12,17 +12,19 @@ export function StaffProfileAvatar({ name, photoPath, className = "h-11 w-11" }:
   const initial = name.trim().slice(0, 1).toUpperCase() || "?";
 
   useEffect(() => {
-    if (!photoPath?.trim()) {
-      setSrc(null);
-      return;
-    }
     let objectUrl: string | null = null;
     let cancelled = false;
 
     (async () => {
       const token = getToken();
-      const res = await fetch("/api/auth/profile-photo", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      if (!token) {
+        setSrc(null);
+        return;
+      }
+      const bust = photoPath?.trim() ? encodeURIComponent(photoPath.trim()) : String(Date.now());
+      const res = await fetch(`/api/auth/profile-photo?v=${bust}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
       });
       if (cancelled) return;
       if (!res.ok) {

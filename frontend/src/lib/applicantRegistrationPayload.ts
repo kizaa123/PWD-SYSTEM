@@ -1,3 +1,5 @@
+import { educationLevelForSubmit } from "./educationLevels";
+
 export function buildApplicantRegistrationBody(
   form: Record<string, string>,
   registrationType: "pwd" | "caregiver",
@@ -5,6 +7,7 @@ export function buildApplicantRegistrationBody(
 ) {
   return {
     ...form,
+    educationLevel: educationLevelForSubmit(form.educationLevel, form.educationLevelOther ?? ""),
     registrationType,
     clientRegistrationId,
     age: form.age ? Number(form.age) : null,

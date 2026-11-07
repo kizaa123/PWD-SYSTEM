@@ -28,7 +28,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 export function SettingsPage() {
-  const { user, person, refresh } = useAuth();
+  const { user, person, refresh, applyProfilePhoto } = useAuth();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(() => (typeof person?.full_name === "string" ? person.full_name : ""));
   const [saving, setSaving] = useState(false);
@@ -82,7 +82,8 @@ export function SettingsPage() {
     setPhotoBusy(true);
     setError("");
     try {
-      await uploadMyStaffProfilePhoto(file);
+      const { photoPath: savedPath } = await uploadMyStaffProfilePhoto(file);
+      applyProfilePhoto(savedPath);
       await refresh();
       setMessage("Profile photo updated.");
     } catch (err) {

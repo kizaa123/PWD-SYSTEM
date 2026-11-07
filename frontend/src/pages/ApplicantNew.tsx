@@ -15,7 +15,7 @@ import {
 } from "../lib/offlineDb";
 import { notifyRegistrationQueueChanged } from "../lib/registrationSync";
 import { api, uploadApplicantPassportPhoto } from "../lib/api";
-import { EducationLevelSelect } from "../components/EducationLevelSelect";
+import { EducationLevelSelect, EducationLevelTextInput } from "../components/EducationLevelSelect";
 import { FormFieldError, fieldErrorBorder } from "../components/FormFieldError";
 import { ghanaCardValidationError } from "../lib/ghanaCardFormat";
 import { nhisValidationError } from "../lib/nhisFormat";
@@ -71,6 +71,7 @@ const emptyForm = {
   disabilityOther: "",
   occupation: "",
   educationLevel: "",
+  educationLevelOther: "",
   residenceType: "Renting",
   residenceOther: "",
 
@@ -599,7 +600,7 @@ export function ApplicantNewPage() {
 
               <div>
                 <label className="block text-sm font-medium text-navy mb-1">Level of education</label>
-                <EducationLevelSelect
+                <EducationLevelTextInput
                   className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-navy outline-none focus:border-teal focus:ring-1 focus:ring-teal"
                   value={form.caregiverEducationLevel}
                   onChange={(v) => set("caregiverEducationLevel", v)}
@@ -904,7 +905,9 @@ export function ApplicantNewPage() {
             <EducationLevelSelect
               className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-navy outline-none focus:border-teal focus:ring-1 focus:ring-teal"
               value={form.educationLevel}
+              otherValue={form.educationLevelOther}
               onChange={(v) => set("educationLevel", v)}
+              onOtherChange={(v) => set("educationLevelOther", v)}
             />
           </div>
 

@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { EducationLevelSelect } from "../components/EducationLevelSelect";
+import { EducationLevelSelect, EducationLevelTextInput } from "../components/EducationLevelSelect";
+import { educationLevelForSubmit, parseEducationLevelForForm } from "../lib/educationLevels";
 import { GhanaCardInput } from "../components/GhanaCardInput";
 import { NhisInput } from "../components/NhisInput";
 import { PhoneInput } from "../components/PhoneInput";
@@ -84,6 +85,7 @@ const emptyForm: FormState = {
   disabilityOther: "",
   occupation: "",
   educationLevel: "",
+  educationLevelOther: "",
   residenceType: "Renting",
   residenceOther: "",
   caregiverName: "",
@@ -134,7 +136,10 @@ function applicantToForm(a: ApplicantDetail, scheduleB: string[]): FormState {
     disabilityCategory: dis.category,
     disabilityOther: dis.other,
     occupation: a.occupation ?? "",
-    educationLevel: a.education_level ?? "",
+    ...(() => {
+      const ed = parseEducationLevelForForm(a.education_level);
+      return { educationLevel: ed.level, educationLevelOther: ed.other };
+    })(),
     residenceType: a.residence_type || "Renting",
     residenceOther: a.residence_other ?? "",
     caregiverName: cg?.full_name ?? "",
@@ -286,7 +291,7 @@ export function ApplicantEditPage() {
           disabilityCategory: form.disabilityCategory,
           disabilityOther: isOtherDis ? form.disabilityOther.trim() || null : null,
           occupation: form.occupation,
-          educationLevel: form.educationLevel,
+          educationLevel: educationLevelForSubmit(form.educationLevel, form.educationLevelOther),
           residenceType: form.residenceType,
           residenceOther: form.residenceOther,
           caregiverName: form.caregiverName,
@@ -427,7 +432,7 @@ export function ApplicantEditPage() {
                 onChange={(v) => set("caregiverSex", v)}
               />
               <Field label="Level of education">
-                <EducationLevelSelect
+                <EducationLevelTextInput
                   className={inputClass}
                   value={form.caregiverEducationLevel}
                   onChange={(v) => set("caregiverEducationLevel", v)}
@@ -665,7 +670,9 @@ export function ApplicantEditPage() {
               <EducationLevelSelect
                 className={inputClass}
                 value={form.educationLevel}
+                otherValue={form.educationLevelOther}
                 onChange={(v) => set("educationLevel", v)}
+                onOtherChange={(v) => set("educationLevelOther", v)}
               />
             </Field>
             <Field label="Current occupation">
