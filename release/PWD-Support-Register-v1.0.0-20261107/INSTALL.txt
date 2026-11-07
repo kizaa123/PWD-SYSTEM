@@ -1,0 +1,32 @@
+PWD SUPPORT MANAGEMENT SYSTEM — INSTALLATION PACKAGE
+=====================================================
+
+Your organisation logo is included as:
+  branding\system-logo.jpg
+The same image appears in the app (login, sidebar, browser tab).
+
+REQUIREMENTS
+  • Windows 10/11 or Windows Server 2019+
+  • Node.js 22 LTS (https://nodejs.org/)
+  • Port 4000 available on the PC or server (or set PORT before start)
+
+STEPS
+  1. Unzip the full folder to e.g. C:\PWD-Support-Register
+  2. Right-click Install.ps1 → Run with PowerShell (or: powershell -File Install.ps1)
+  3. Start the system:
+       • Double-click Start-PWD-Support.bat
+     — or —
+       powershell -File Start-PWD-Support.ps1
+  4. Open a browser: http://localhost:4000
+
+REPLACE LOGO (optional, before going live)
+  Replace web\system-logo.jpg (and branding\system-logo.jpg) with your
+  square logo (256×256 px or larger). Refresh the browser.
+
+PRODUCTION NOTES
+  • Do not use demo passwords on a live register.
+  • Back up backend\data\pwd.sqlite and backend\uploads daily.
+  • For HTTPS, multiple districts, or PostgreSQL, contact your implementer.
+
+SUPPORT
+  See README.md in this folder for system overview.

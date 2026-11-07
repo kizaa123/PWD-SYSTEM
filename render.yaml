@@ -1,0 +1,32 @@
+# Render Blueprint — one Web Service (API + built React) with persistent disk.
+# Dashboard: New → Blueprint → connect this repo, or paste this file.
+# Custom domain: Service → Settings → Custom Domains.
+#
+# Requires a paid instance plan for the persistent disk (Starter + disk).
+
+services:
+  - type: web
+    name: pwd-support
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PWD_WEB_DIST
+        value: /app/web
+      - key: PWD_DATA_DIR
+        value: /var/data
+      - key: PWD_UPLOADS_DIR
+        value: /var/data/uploads
+      - key: TRUST_PROXY
+        value: "1"
+      - key: PWD_TOKEN_SECRET
+        generateValue: true
+    disk:
+      name: pwd-storage
+      mountPath: /var/data
+      sizeGB: 1

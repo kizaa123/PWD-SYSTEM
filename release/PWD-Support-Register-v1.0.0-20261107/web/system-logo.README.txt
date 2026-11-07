@@ -1,0 +1,13 @@
+Replace the sidebar system logo
+================================
+
+1. Add your logo image to this folder as:
+   system-logo.jpg  or  system-logo.png
+   (recommended: square, at least 256×256 px; displays as a circle in the sidebar)
+
+2. Full path on disk:
+   frontend/public/system-logo.jpg
+
+3. After adding the file, refresh the browser (Vite serves files from public/ at the site root URL /system-logo.jpg).
+
+4. If the file is missing, the sidebar shows a default emblem (Ghana coat of arms placeholder).

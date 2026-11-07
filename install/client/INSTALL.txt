@@ -1,0 +1,29 @@
+PWD SUPPORT MANAGEMENT SYSTEM
+=============================
+
+This copy is installed and maintained by your system implementer.
+You use the application in your web browser; updates and technical
+files are handled by them. Your organisation's register data is stored
+on this computer (database and uploaded documents).
+
+LOGO
+  branding\system-logo.jpg — same image on login and in the browser tab.
+
+DAILY USE
+  1. Ensure the system is running (your implementer may start it as a
+     service or you may use Start-PWD-Support.bat if they showed you).
+  2. Open: http://localhost:4000
+     (or the web address your implementer gave you, e.g. https://…)
+
+FIRST-TIME SETUP (usually done by your implementer)
+  • Node.js 22 LTS on this PC or server
+  • Run Install.ps1 once, then Start-PWD-Support.bat
+
+YOUR DATA (important)
+  • Database: backend\data\pwd.sqlite
+  • Files: backend\uploads\
+  Your implementer should back these up regularly. Do not delete them.
+
+QUESTIONS
+  Contact the person or team who installed this system for passwords,
+  new staff accounts, HTTPS, or backups — not by editing program files.

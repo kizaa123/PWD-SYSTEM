@@ -1,0 +1,7 @@
+# Hostname comes from PWD_DOMAIN in .env (passed into this container).
+# Let's Encrypt HTTPS is automatic once DNS points at this server.
+
+{$PWD_DOMAIN} {
+	encode gzip
+	reverse_proxy pwd:4000
+}

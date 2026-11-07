@@ -1,0 +1,41 @@
+services:
+  pwd:
+    build: .
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PWD_WEB_DIST: /app/web
+      PORT: "4000"
+      TRUST_PROXY: "1"
+      PWD_TOKEN_SECRET: ${PWD_TOKEN_SECRET:?Set PWD_TOKEN_SECRET in .env}
+    volumes:
+      - pwd-data:/app/backend/data
+      - pwd-uploads:/app/backend/uploads
+    networks:
+      - edge
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - pwd
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PWD_DOMAIN: ${PWD_DOMAIN:?Set PWD_DOMAIN in .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - edge
+
+volumes:
+  pwd-data:
+  pwd-uploads:
+  caddy-data:
+  caddy-config:
+
+networks:
+  edge:
