@@ -41,9 +41,9 @@ Write-Host ""
 Write-Host "Opening public tunnel (URL appears below in ~10 seconds)..." -ForegroundColor Cyan
 Write-Host "Send the https://....trycloudflare.com link to your client." -ForegroundColor Green
 Write-Host ""
-Write-Host "Demo login:" 
-Write-Host "  register@accra.gh  /  Pwd@2026   (Social Welfare — registration)"
-Write-Host "  admin@ncpd.gov.gh  /  Pwd@2026   (System admin)"
+Write-Host "Demo login (tap on login page or use below):"
+Write-Host "  welfare@demo.gh  /  Demo1234   (Social Welfare)"
+Write-Host "  admin@demo.gh    /  Demo1234   (System admin)"
 Write-Host ""
 Write-Host "Press Ctrl+C to stop tunnel and API." -ForegroundColor Yellow
 

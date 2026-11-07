@@ -1,7 +1,8 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+/** `backend/` directory (this file lives in `backend/src/lib/`). */
+const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 /** SQLite and other data files (`PWD_DATA_DIR` on Render/Fly persistent disk). */
 export function dataDir(): string {

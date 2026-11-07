@@ -19,7 +19,7 @@ type Payload = {
 export function UsersPage() {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ email: "", password: "Pwd@2026", fullName: "", roleCode: "registration_officer", scopeLevel: "district" });
+  const [form, setForm] = useState({ email: "", password: "Demo1234", fullName: "", roleCode: "registration_officer", scopeLevel: "district" });
 
   function load() {
     api<Payload>("/api/users").then(setData).catch((e) => setError(e.message));

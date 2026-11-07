@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { isStaffPortalUser } from "../lib/portalAccess";
 import { SystemLogoImage } from "../components/SystemBrandLogo";
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from "../lib/demoAccounts";
 
 const FEATURES = [
   {
@@ -263,19 +264,27 @@ export function LoginPage() {
           </form>
 
           <div className="mt-6 border-t border-slate-200/80 pt-5">
-            <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">Demo accounts</p>
-            <ul className="mt-3 space-y-2 text-center text-[12px] leading-snug text-slate-700">
-              <li>
-                <span className="font-mono text-[11px] sm:text-xs">register@accra.gh</span>
-                <span className="mt-0.5 block text-[10px] text-slate-500">Registration officer</span>
-              </li>
-              <li>
-                <span className="font-mono text-[11px] sm:text-xs">admin@ncpd.gov.gh</span>
-                <span className="mt-0.5 block text-[10px] text-slate-500">System administrator</span>
-              </li>
+            <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">Try the demo</p>
+            <ul className="mt-3 space-y-2">
+              {DEMO_ACCOUNTS.map((account) => (
+                <li key={account.email}>
+                  <button
+                    type="button"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2.5 text-left text-[12px] transition hover:border-[#00827f]/40 hover:bg-white"
+                    onClick={() => {
+                      setEmail(account.email);
+                      setPassword(account.password);
+                      setError("");
+                    }}
+                  >
+                    <span className="font-semibold text-[#0f2438]">{account.label}</span>
+                    <span className="mt-0.5 block font-mono text-[11px] text-slate-600">{account.email}</span>
+                  </button>
+                </li>
+              ))}
             </ul>
-            <p className="mt-3 text-center text-[10px] text-slate-500">
-              Default password from seed: <span className="font-mono text-slate-600">Pwd@2026</span>
+            <p className="mt-3 text-center text-[11px] text-slate-500">
+              Password for both: <span className="font-mono font-medium text-slate-700">{DEMO_PASSWORD}</span>
             </p>
           </div>
           </div>

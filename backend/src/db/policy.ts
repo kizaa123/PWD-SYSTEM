@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
-import { newId } from "../lib/crypto.ts";
+import { DEMO_PASSWORD } from "../lib/constants.ts";
+import { hashPassword, newId } from "../lib/crypto.ts";
 
 export const COVERAGE_DISTRICT_CODE = "KEEA";
 export const COVERAGE_DISTRICT_NAME = "Komenda Edina Eguafo Abrem Municipal Assembly";
@@ -88,8 +89,24 @@ function migrateApplicationWorkflow(db: DatabaseSync) {
 }
 
 /** Apply the current operating rules to a new or already-seeded database. */
+function migrateDemoStaffEmails(db: DatabaseSync) {
+  db.prepare("UPDATE users SET email = ? WHERE email = ?").run(DEMO_WELFARE_EMAIL, "register@accra.gh");
+  db.prepare("UPDATE users SET email = ? WHERE email = ?").run(DEMO_ADMIN_EMAIL, "admin@ncpd.gov.gh");
+}
+
+function refreshDemoStaffPasswords(db: DatabaseSync) {
+  const hash = hashPassword(DEMO_PASSWORD);
+  for (const email of CORE_STAFF_EMAILS) {
+    db.prepare("UPDATE users SET password_hash = ?, status = 'active', failed_logins = 0, locked_until = NULL WHERE email = ?").run(
+      hash,
+      email,
+    );
+  }
+}
+
 export function applyOperatingPolicy(db: DatabaseSync) {
   migrateApplicationWorkflow(db);
+  migrateDemoStaffEmails(db);
   const now = new Date().toISOString();
   const regionId = ensureCentralRegion(db);
   const districtId = ensureKeea(db, regionId);
@@ -145,9 +162,10 @@ export function applyOperatingPolicy(db: DatabaseSync) {
   }
 
   retainOnlyCoreStaffAccounts(db);
+  refreshDemoStaffPasswords(db);
   alignRegistrationOfficerScope(db, districtId, regionId);
   db.prepare("UPDATE applicant_profiles SET registered_by_user_id = NULL WHERE registration_source = 'self'").run();
-  const registrationOfficer = db.prepare("SELECT id FROM users WHERE email = 'register@accra.gh' LIMIT 1").get() as { id: string } | undefined;
+  const registrationOfficer = db.prepare("SELECT id FROM users WHERE email = 'welfare@demo.gh' LIMIT 1").get() as { id: string } | undefined;
   if (registrationOfficer) {
     db.prepare(
       "UPDATE applicant_profiles SET registered_by_user_id = ? WHERE registration_source = 'staff' AND registered_by_user_id IS NULL",
@@ -236,7 +254,9 @@ function ensureRole(db: DatabaseSync, code: string, name: string, description: s
   return id;
 }
 
-const CORE_STAFF_EMAILS = ["register@accra.gh", "admin@ncpd.gov.gh"];
+export const DEMO_WELFARE_EMAIL = "welfare@demo.gh";
+export const DEMO_ADMIN_EMAIL = "admin@demo.gh";
+const CORE_STAFF_EMAILS = [DEMO_WELFARE_EMAIL, DEMO_ADMIN_EMAIL];
 
 /** Suspend demo / extra seeded staff logins; only registration + system admin stay active. */
 function retainOnlyCoreStaffAccounts(db: DatabaseSync) {
@@ -246,7 +266,7 @@ function retainOnlyCoreStaffAccounts(db: DatabaseSync) {
 }
 
 function alignRegistrationOfficerScope(db: DatabaseSync, districtId: string, regionId: string) {
-  const row = db.prepare("SELECT id FROM users WHERE email = 'register@accra.gh' LIMIT 1").get() as { id: string } | undefined;
+  const row = db.prepare("SELECT id FROM users WHERE email = ? LIMIT 1").get(DEMO_WELFARE_EMAIL) as { id: string } | undefined;
   if (!row) return;
   const scope = db.prepare("SELECT id FROM user_scopes WHERE user_id = ? LIMIT 1").get(row.id) as { id: string } | undefined;
   if (scope) {

@@ -95,10 +95,10 @@ Example: **https://register.komendamunicipal.gov.gh/**
 
 Demo accounts (change passwords before go-live):
 
-| Email | Password | Role |
-|-------|----------|------|
-| `register@accra.gh` | `Pwd@2026` | Social Welfare registration |
-| `admin@ncpd.gov.gh` | `Pwd@2026` | System admin |
+| Who | Email | Password |
+|-----|--------|----------|
+| Social Welfare | `welfare@demo.gh` | `Demo1234` |
+| System admin | `admin@demo.gh` | `Demo1234` |
 
 ---
 
@@ -106,7 +106,7 @@ Demo accounts (change passwords before go-live):
 
 - [ ] DNS A record correct
 - [ ] `PWD_TOKEN_SECRET` set to a long random value (not the example)
-- [ ] Demo password `Pwd@2026` changed for all users
+- [ ] Demo password `Demo1234` changed (or real staff accounts created)
 - [ ] `docker compose` shows both `pwd` and `caddy` running
 - [ ] Backup: snapshot VPS or copy volumes `pwd-data` and `pwd-uploads` daily
 - [ ] Stop the temporary **trycloudflare** tunnel on your PC so clients use only the real domain

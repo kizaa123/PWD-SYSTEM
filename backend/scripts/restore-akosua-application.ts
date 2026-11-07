@@ -35,7 +35,7 @@ if (existing) {
 
 const creator = db
   .prepare("SELECT id FROM users WHERE email = ?")
-  .get("register@accra.gh") as { id: string } | undefined;
+  .get("welfare@demo.gh") as { id: string } | undefined;
 
 const appId = newId("app");
 const reference = applicationReference();

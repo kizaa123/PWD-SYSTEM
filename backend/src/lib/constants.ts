@@ -71,4 +71,4 @@ export const STATUS_LABELS: Record<string, string> = {
 
 export const PHASE_ORDER = ["registration", "interview", "selection", "disbursement", "completed"] as const;
 
-export const DEMO_PASSWORD = "Pwd@2026";
+export const DEMO_PASSWORD = "Demo1234";

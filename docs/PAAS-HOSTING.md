@@ -42,10 +42,10 @@ Free Render tiers that **sleep** and **lack disk** are **not** suitable for prod
 
 ### Demo login (after first deploy)
 
-| Email | Password |
-|-------|----------|
-| `register@accra.gh` | `Pwd@2026` |
-| `admin@ncpd.gov.gh` | `Pwd@2026` |
+| Who | Email | Password |
+|-----|--------|----------|
+| Social Welfare | `welfare@demo.gh` | `Demo1234` |
+| System admin | `admin@demo.gh` | `Demo1234` |
 
 Change passwords before go-live.
 
@@ -106,7 +106,7 @@ That is a **planned upgrade**, not a button-click deploy. When the register outg
 
 - [ ] App on Render (or VPS), not trycloudflare
 - [ ] Custom domain configured
-- [ ] `Pwd@2026` changed
+- [ ] `Demo1234` changed on both demo accounts (or replace with real staff users)
 - [ ] `PWD_TOKEN_SECRET` set (auto on Render)
 - [ ] Welfare staff bookmark **one HTTPS URL**
 - [ ] You retain GitHub repo + backup of `/var/data`

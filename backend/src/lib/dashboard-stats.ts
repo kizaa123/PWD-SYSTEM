@@ -3,7 +3,8 @@ import type { AuthUser } from "../lib/auth.ts";
 import { geoFilterSql } from "../lib/auth.ts";
 import { currentApplicationYear } from "../lib/applications-core.ts";
 
-const YEAR_APP_EXCLUDE = "('cancelled', 'rejected', 'registration')";
+/** Yearly dashboard counts open requests still in registration, not only submitted onward. */
+const YEAR_APP_EXCLUDE = "('cancelled', 'rejected')";
 
 export type YearCategorySlice = {
   category_code: string;
@@ -207,7 +208,43 @@ export function loadYearDashboardStats(user: AuthUser, year: number | null = cur
     appliedWhere.params,
   );
 
-  const supportBreakdown = [...educationBars, ...healthBars, ...assistiveBars, ...incomeBars, ...caregiverBars]
+  const detailBars = [...educationBars, ...healthBars, ...assistiveBars, ...incomeBars, ...caregiverBars];
+  const coveredIds = new Set(
+    all<{ id: string }>(
+      `SELECT DISTINCT a.id FROM applications a
+       LEFT JOIN education_details ed ON ed.application_id = a.id
+       LEFT JOIN health_details hd ON hd.application_id = a.id
+       LEFT JOIN income_activity_details iad ON iad.application_id = a.id
+       LEFT JOIN caregiver_support_details csd ON csd.application_id = a.id
+       WHERE ${appliedWhere.sql}
+         AND (ed.application_id IS NOT NULL OR hd.application_id IS NOT NULL OR iad.application_id IS NOT NULL OR csd.application_id IS NOT NULL)`,
+      appliedWhere.params,
+    ).map((r) => r.id),
+  );
+
+  const fallbackGrouped = new Map<string, { requested_pesewas: number; applications: number }>();
+  const orphanApps = all<{ id: string; label: string; requested_pesewas: number }>(
+    `SELECT a.id,
+            COALESCE(NULLIF(TRIM(a.purpose_summary), ''), sc.name || ' (purpose not specified)') AS label,
+            COALESCE(a.amount_requested_pesewas, 0) AS requested_pesewas
+     FROM applications a
+     JOIN support_categories sc ON sc.code = a.category_code
+     WHERE ${appliedWhere.sql}`,
+    appliedWhere.params,
+  ).filter((row) => !coveredIds.has(row.id));
+  for (const row of orphanApps) {
+    const prev = fallbackGrouped.get(row.label) || { requested_pesewas: 0, applications: 0 };
+    prev.requested_pesewas += row.requested_pesewas;
+    prev.applications += 1;
+    fallbackGrouped.set(row.label, prev);
+  }
+  const mergedFallback = [...fallbackGrouped.entries()].map(([label, v]) => ({
+    label,
+    requested_pesewas: v.requested_pesewas,
+    applications: v.applications,
+  }));
+
+  const supportBreakdown = [...detailBars, ...mergedFallback]
     .filter((b) => b.applications > 0)
     .sort((a, b) => b.requested_pesewas - a.requested_pesewas);
 

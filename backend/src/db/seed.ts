@@ -227,11 +227,11 @@ export function seedIfEmpty(db: DB) {
     return id;
   }
 
-  user("register@accra.gh", person("Efua Registration", "female", "0201111000"), "registration_officer", {
+  user("welfare@demo.gh", person("Ama Mensah", "female", "0201111000"), "registration_officer", {
     level: "district",
     district: "KEEA",
   });
-  user("admin@ncpd.gov.gh", person("System Administrator", "male", "0302000002"), "system_admin", { level: "national" });
+  user("admin@demo.gh", person("Kwame Admin", "male", "0302000002"), "system_admin", { level: "national" });
 
   db.prepare(
     "INSERT INTO audit_events (id, actor_user_id, action, entity_type, entity_id, outcome, metadata, ip_address, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
