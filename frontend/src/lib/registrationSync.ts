@@ -1,10 +1,15 @@
-import { getToken, uploadApplicantPassportPhoto } from "./api";
+import { getToken, uploadApplicantPassportPhoto, uploadApplicationDocument } from "./api";
 import { apiReachable } from "./connection";
 import {
+  listPendingApplications,
   listPendingRegistrations,
+  payloadToFile,
   photoPayloadToFile,
+  removePendingApplication,
   removePendingRegistration,
+  updatePendingApplication,
   updatePendingRegistration,
+  type PendingApplication,
   type PendingRegistration,
 } from "./offlineDb";
 
@@ -86,6 +91,50 @@ async function syncOne(row: PendingRegistration): Promise<"done" | "retry" | "du
   }
 }
 
+async function syncOneApplication(row: PendingApplication): Promise<"done" | "retry"> {
+  const working: PendingApplication = { ...row, status: "syncing" };
+  await updatePendingApplication(working);
+  const token = getToken();
+  if (!token) return "retry";
+  try {
+    const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+    const patchRes = await fetch(`/api/applicants/${working.applicantProfileId}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(working.patchBody),
+    });
+    const patchData = await patchRes.json().catch(() => ({}));
+    if (!patchRes.ok) throw new Error((patchData as { error?: string }).error || patchRes.statusText);
+
+    const appUrl = working.draftApplicationId
+      ? `/api/applications/${working.draftApplicationId}`
+      : "/api/applications";
+    const appMethod = working.draftApplicationId ? "PATCH" : "POST";
+    const appBody = working.draftApplicationId
+      ? working.requestBody
+      : { applicantProfileId: working.applicantProfileId, ...working.requestBody };
+    const appRes = await fetch(appUrl, { method: appMethod, headers, body: JSON.stringify(appBody) });
+    const appData = await appRes.json().catch(() => ({}));
+    if (!appRes.ok) throw new Error((appData as { error?: string }).error || appRes.statusText);
+    const applicationId = (appData as { id: string }).id;
+
+    for (const doc of working.documents) {
+      const file = payloadToFile(doc);
+      await uploadApplicationDocument(applicationId, file, doc.documentType);
+    }
+    await removePendingApplication(working.id);
+    return "done";
+  } catch (err) {
+    const failed: PendingApplication = {
+      ...working,
+      status: "error",
+      errorMessage: err instanceof Error ? err.message : "Sync failed",
+    };
+    await updatePendingApplication(failed);
+    return "retry";
+  }
+}
+
 export async function flushPendingRegistrations(): Promise<{ synced: number; failed: number }> {
   if (syncing) return { synced: 0, failed: 0 };
   if (!getToken()) return { synced: 0, failed: 0 };
@@ -103,6 +152,13 @@ export async function flushPendingRegistrations(): Promise<{ synced: number; fai
       if (outcome === "done") synced += 1;
       else if (outcome === "retry") failed += 1;
     }
+    const appRows = await listPendingApplications();
+    for (const row of appRows) {
+      if (row.status !== "pending" && row.status !== "error") continue;
+      const outcome = await syncOneApplication(row);
+      if (outcome === "done") synced += 1;
+      else if (outcome === "retry") failed += 1;
+    }
   } finally {
     syncing = false;
     notify();
@@ -112,8 +168,9 @@ export async function flushPendingRegistrations(): Promise<{ synced: number; fai
 
 export async function getSyncSummary() {
   const rows = await listPendingRegistrations();
-  const pending = rows.filter((r) => r.status === "pending").length;
-  const errors = rows.filter((r) => r.status === "error").length;
+  const appRows = await listPendingApplications();
+  const pending = rows.filter((r) => r.status === "pending").length + appRows.filter((r) => r.status === "pending").length;
+  const errors = rows.filter((r) => r.status === "error").length + appRows.filter((r) => r.status === "error").length;
   const duplicates = rows.filter((r) => r.status === "duplicate").length;
-  return { pending, errors, duplicates, rows };
+  return { pending, errors, duplicates, rows, appRows };
 }

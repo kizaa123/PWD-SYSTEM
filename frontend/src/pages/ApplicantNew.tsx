@@ -182,13 +182,18 @@ export function ApplicantNewPage() {
     return true;
   }
 
-  const [offlineReg, setOfflineReg] = useState(false);
-
   useEffect(() => {
     let cancelled = false;
+    const cached = readLookupsCache();
+    if (cached?.districts?.length) {
+      setLookups({
+        regions: cached.regions,
+        districts: cached.districts,
+        disabilities: cached.disabilities,
+      });
+      setLookupsReady(true);
+    }
     (async () => {
-      const reachable = browserOnline() && (await apiReachable());
-      if (!cancelled) setOfflineReg(!reachable);
       try {
         const data = await api<Lookups>("/api/auth/lookups");
         if (cancelled) return;
@@ -223,13 +228,8 @@ export function ApplicantNewPage() {
         }
       }
     })();
-    const refresh = () => void apiReachable().then((ok) => setOfflineReg(!ok));
-    window.addEventListener("online", refresh);
-    window.addEventListener("offline", refresh);
     return () => {
       cancelled = true;
-      window.removeEventListener("online", refresh);
-      window.removeEventListener("offline", refresh);
     };
   }, []);
 
@@ -243,12 +243,9 @@ export function ApplicantNewPage() {
 
   if (lookupsReady && !lookups) {
     return (
-      <div className="mx-auto max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-950">
-        <p className="font-semibold">Connect once to load the registration form</p>
-        <p className="mt-2">
-          Open this system while the server is reachable and stay signed in. After that, offline registration will use
-          cached district and disability lists on this PC.
-        </p>
+      <div className="mx-auto max-w-lg rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm text-navy">
+        <p className="font-semibold">Form not cached yet</p>
+        <p className="mt-2 text-muted">Open the app once while online, then you can register offline on this device.</p>
       </div>
     );
   }
@@ -282,7 +279,9 @@ export function ApplicantNewPage() {
       notifyRegistrationQueueChanged();
       setError("");
       setInfo(
-        `Saved on this device while offline. ${n} registration(s) will upload automatically when the server is reachable. Other staff will see them in the shared register after sync.`,
+        n > 1
+          ? `Saved on this device (${n} waiting to sync).`
+          : "Saved on this device. Will sync when online.",
       );
       setForm({ ...emptyForm });
       setPassportPhoto(null);
@@ -363,11 +362,6 @@ export function ApplicantNewPage() {
             <p className="mt-1 text-sm text-muted">
               Register an applicant in the permanent municipal disability database.
             </p>
-            {offlineReg ? (
-              <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                Offline mode — registration is saved on this device and syncs to the shared database when online.
-              </p>
-            ) : null}
           </div>
           {selectedDistrict && (
             <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-muted">

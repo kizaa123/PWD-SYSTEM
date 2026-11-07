@@ -4,6 +4,7 @@ export type CachedLookups = {
   regions: { id: string; name: string }[];
   districts: { id: string; name: string; region_id: string }[];
   disabilities: string[];
+  categories?: { code: string; name: string; description: string }[];
   cachedAt: string;
 };
 
@@ -17,7 +18,14 @@ export function readLookupsCache(): CachedLookups | null {
   }
 }
 
-export function writeLookupsCache(data: Omit<CachedLookups, "cachedAt">) {
-  const payload: CachedLookups = { ...data, cachedAt: new Date().toISOString() };
+export function writeLookupsCache(data: Partial<Omit<CachedLookups, "cachedAt">>) {
+  const prev = readLookupsCache();
+  const payload: CachedLookups = {
+    regions: data.regions ?? prev?.regions ?? [],
+    districts: data.districts ?? prev?.districts ?? [],
+    disabilities: data.disabilities ?? prev?.disabilities ?? [],
+    categories: data.categories ?? prev?.categories,
+    cachedAt: new Date().toISOString(),
+  };
   localStorage.setItem(KEY, JSON.stringify(payload));
 }

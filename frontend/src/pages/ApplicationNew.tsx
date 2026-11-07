@@ -1,6 +1,20 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CATEGORY_LABELS, api, uploadApplicationDocument } from "../lib/api";
+import { apiReachable, browserOnline, isLikelyNetworkError } from "../lib/connection";
+import {
+  readApplicantDetailCache,
+  readApplicantsListCache,
+  writeApplicantDetailCache,
+  writeApplicantsListCache,
+} from "../lib/applicantsCache";
+import { readLookupsCache, writeLookupsCache } from "../lib/lookupsCache";
+import {
+  countPendingApplications,
+  enqueuePendingApplication,
+  fileToPayload,
+} from "../lib/offlineDb";
+import { notifyRegistrationQueueChanged } from "../lib/registrationSync";
 import { formatAppDate } from "../lib/dateFormat";
 import { disabilityFromRegistration } from "../lib/disabilityScheduleB";
 import {
@@ -212,9 +226,47 @@ export function ApplicationNewPage() {
   const [draftApplicationId, setDraftApplicationId] = useState<string | null>(null);
   const [completedLock, setCompletedLock] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
+  const [offlineInfo, setOfflineInfo] = useState("");
 
   function set(k: keyof typeof form, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  function applyDossierData(data: ApplicantDetail) {
+    const draft = data.applications.find(
+      (a) =>
+        a.application_year === CURRENT_APPLICATION_YEAR &&
+        (a.status === "registration" || a.status === "returned_for_correction"),
+    );
+    setDraftApplicationId(draft?.id ?? null);
+    setDossier(data);
+    const draftQualifies = draft != null && !isSubstantiveYearApplication(draft);
+    if (profileSupportYearClosed(data.applications, CURRENT_APPLICATION_YEAR) && !draftQualifies) {
+      setCompletedLock(true);
+      setError(
+        `This applicant already has a ${CURRENT_APPLICATION_YEAR} support request on file. A new request can be opened next year.`,
+      );
+      return;
+    }
+    setCompletedLock(false);
+    if (data.registrationSupportIntake) {
+      const intake = data.registrationSupportIntake;
+      setRegisteredIntake(intake);
+      setCategory(intake.categoryCode);
+      setPurposeForm(purposeFormFromIntake(intake));
+    } else {
+      setRegisteredIntake(null);
+    }
+    const scheduleB = lookups?.disabilities ?? readLookupsCache()?.disabilities ?? [];
+    const disability = disabilityFromRegistration(data.disability_category, data.disability_other, scheduleB);
+    setRegisteredDisabilityDisplay(disability.display);
+    const hasRegisteredDisability = Boolean(disability.display);
+    setDisabilityUseSpecify(!hasRegisteredDisability);
+    setDisabilitySpecifyText(data.disability_other || "");
+    setForm({
+      opdMember: data.opd_member ? "yes" : "no",
+      opdName: "",
+    });
   }
 
   const purposeCategories = useMemo(() => {
@@ -237,13 +289,34 @@ export function ApplicationNewPage() {
   }, [preselectedId, navigate]);
 
   useEffect(() => {
-    api<Lookups>("/api/auth/lookups").then(setLookups);
+    const cached = readLookupsCache();
+    if (cached?.categories?.length) {
+      setLookups({ categories: cached.categories, disabilities: cached.disabilities ?? [] });
+    }
+    api<Lookups>("/api/auth/lookups")
+      .then((data) => {
+        writeLookupsCache({
+          disabilities: data.disabilities,
+          categories: data.categories,
+        });
+        setLookups(data);
+      })
+      .catch(() => {
+        if (cached?.categories?.length) setLookups({ categories: cached.categories, disabilities: cached.disabilities });
+      });
   }, []);
 
   useEffect(() => {
+    const cached = readApplicantsListCache<ApplicantListRow>();
+    if (cached) setApplicants(cached);
     api<ApplicantListRow[]>("/api/applicants")
-      .then(setApplicants)
-      .catch(() => setApplicants([]));
+      .then((rows) => {
+        writeApplicantsListCache(rows);
+        setApplicants(rows);
+      })
+      .catch(() => {
+        if (cached) setApplicants(cached);
+      });
   }, []);
 
   useEffect(() => {
@@ -270,45 +343,22 @@ export function ApplicationNewPage() {
     }
     setLoading(true);
     setError("");
+    const cachedDetail = readApplicantDetailCache<ApplicantDetail>(applicantProfileId);
+    if (cachedDetail) {
+      applyDossierData(cachedDetail);
+      setLoading(false);
+    }
     api<ApplicantDetail>(`/api/applicants/${applicantProfileId}`)
       .then((data) => {
-        // A request opened at registration is completed on this form rather than elsewhere.
-        const draft = data.applications.find(
-          (a) =>
-            a.application_year === CURRENT_APPLICATION_YEAR &&
-            (a.status === "registration" || a.status === "returned_for_correction"),
-        );
-        setDraftApplicationId(draft?.id ?? null);
-        setDossier(data);
-        const draftQualifies = draft != null && !isSubstantiveYearApplication(draft);
-        if (profileSupportYearClosed(data.applications, CURRENT_APPLICATION_YEAR) && !draftQualifies) {
-          setCompletedLock(true);
-          setError(
-            `This applicant already has a ${CURRENT_APPLICATION_YEAR} support request on file. A new request can be opened next year.`,
-          );
-          return;
-        }
-        setCompletedLock(false);
-        if (data.registrationSupportIntake) {
-          const intake = data.registrationSupportIntake;
-          setRegisteredIntake(intake);
-          setCategory(intake.categoryCode);
-          setPurposeForm(purposeFormFromIntake(intake));
-        } else {
-          setRegisteredIntake(null);
-        }
-        const scheduleB = lookups?.disabilities ?? [];
-        const disability = disabilityFromRegistration(data.disability_category, data.disability_other, scheduleB);
-        setRegisteredDisabilityDisplay(disability.display);
-        const hasRegisteredDisability = Boolean(disability.display);
-        setDisabilityUseSpecify(!hasRegisteredDisability);
-        setDisabilitySpecifyText(data.disability_other || "");
-        setForm({
-          opdMember: data.opd_member ? "yes" : "no",
-          opdName: "",
-        });
+        writeApplicantDetailCache(applicantProfileId, data);
+        applyDossierData(data);
       })
       .catch((e) => {
+        if (cachedDetail) return;
+        if (isLikelyNetworkError(e)) {
+          setError("Applicant details are not cached on this device. Open this record once while online.");
+          return;
+        }
         setDossier(null);
         setError(e.message);
       })
@@ -413,43 +463,75 @@ export function ApplicationNewPage() {
       return;
     }
     setError("");
+    setOfflineInfo("");
     setBusy(true);
+    const otherScheduleB =
+      lookups?.disabilities.find((d) => d.startsWith("Other")) || "Other (specify)";
+    const patchBody: Record<string, unknown> = {
+      opdMember: form.opdMember === "yes",
+      opdName: form.opdMember === "yes" ? form.opdName : "",
+    };
+    if (disabilityUseSpecify) {
+      patchBody.disabilityCategory = otherScheduleB;
+      patchBody.disabilityOther = disabilitySpecifyText.trim();
+    }
+    const submitCategory = registeredIntake?.categoryCode || category;
+    const categoryLabel =
+      registeredIntake?.categoryLabel ||
+      purposeCategories.find((c) => c.code === category)?.name ||
+      CATEGORY_LABELS[category] ||
+      category;
+    const autoSummary = registeredIntake
+      ? registeredIntake.purposeSummarySeed
+      : buildPurposeSummaryFromForm(category, categoryLabel, purposeForm);
+    const notes = purpose.trim();
+    const purposeSummary = notes ? `${autoSummary} — ${notes}` : autoSummary;
+    const requestBody = {
+      categoryCode: submitCategory,
+      amountRequested: amountNum,
+      purposeSummary,
+      applicantSignatureLabel: declaration.signatureMode === "thumbprint" ? "Thumbprint" : "Signature",
+      endorsingOfficerName: applicationEndorsedByName === "—" ? null : applicationEndorsedByName,
+      officeUseQualified: declaration.officeUseQualified,
+      officeUseRemarks: declaration.officeUseRemarks.trim(),
+      details: mergeApplicationSubmitDetails({ registeredIntake, category, purposeForm }),
+    };
+
+    async function saveOfflineApplication() {
+      const documents: { documentType: string; fileName: string; mimeType: string; base64: string }[] = [];
+      if (requiresMedicalDocument && medicalSupportFile) {
+        documents.push({ documentType: "medical_receipt", ...(await fileToPayload(medicalSupportFile)) });
+      }
+      if (requiresEducationSchool && schoolLetterFile) {
+        documents.push({ documentType: "admission_letter", ...(await fileToPayload(schoolLetterFile)) });
+      }
+      await enqueuePendingApplication({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        status: "pending",
+        applicantProfileId,
+        draftApplicationId,
+        patchBody,
+        requestBody,
+        documents,
+        label: dossier?.full_name || "Application",
+      });
+      const n = await countPendingApplications();
+      notifyRegistrationQueueChanged();
+      setOfflineInfo(n > 0 ? `Saved on this device (${n} application(s) waiting to sync).` : "Saved on this device.");
+      navigate("/applications");
+    }
+
     try {
-      const otherScheduleB =
-        lookups?.disabilities.find((d) => d.startsWith("Other")) || "Other (specify)";
-      const patchBody: Record<string, unknown> = {
-        opdMember: form.opdMember === "yes",
-        opdName: form.opdMember === "yes" ? form.opdName : "",
-      };
-      if (disabilityUseSpecify) {
-        patchBody.disabilityCategory = otherScheduleB;
-        patchBody.disabilityOther = disabilitySpecifyText.trim();
+      const reachable = browserOnline() && (await apiReachable());
+      if (!reachable) {
+        await saveOfflineApplication();
+        return;
       }
       await api(`/api/applicants/${applicantProfileId}`, {
         method: "PATCH",
         body: JSON.stringify(patchBody),
       });
-      const submitCategory = registeredIntake?.categoryCode || category;
-      const categoryLabel =
-        registeredIntake?.categoryLabel ||
-        purposeCategories.find((c) => c.code === category)?.name ||
-        CATEGORY_LABELS[category] ||
-        category;
-      const autoSummary = registeredIntake
-        ? registeredIntake.purposeSummarySeed
-        : buildPurposeSummaryFromForm(category, categoryLabel, purposeForm);
-      const notes = purpose.trim();
-      const purposeSummary = notes ? `${autoSummary} — ${notes}` : autoSummary;
-      const requestBody = {
-        categoryCode: submitCategory,
-        amountRequested: amountNum,
-        purposeSummary,
-        applicantSignatureLabel: declaration.signatureMode === "thumbprint" ? "Thumbprint" : "Signature",
-        endorsingOfficerName: applicationEndorsedByName === "—" ? null : applicationEndorsedByName,
-        officeUseQualified: declaration.officeUseQualified,
-        officeUseRemarks: declaration.officeUseRemarks.trim(),
-        details: mergeApplicationSubmitDetails({ registeredIntake, category, purposeForm }),
-      };
       const saved = draftApplicationId
         ? await api<{ id: string }>(`/api/applications/${draftApplicationId}`, {
             method: "PATCH",
@@ -467,6 +549,15 @@ export function ApplicationNewPage() {
       }
       navigate("/applications");
     } catch (err) {
+      if (isLikelyNetworkError(err)) {
+        try {
+          await saveOfflineApplication();
+          return;
+        } catch (queueErr) {
+          setError((queueErr as Error).message);
+          return;
+        }
+      }
       setError((err as Error).message);
     } finally {
       setBusy(false);

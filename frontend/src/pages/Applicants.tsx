@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
+import { readApplicantsListCache, writeApplicantsListCache } from "../lib/applicantsCache";
 import { Button, ReferenceNumber, inputClass } from "../components/StatusBadge";
 import { PageTitle } from "../components/PageTitle";
 import { ApplicantViewModal } from "../components/ApplicantViewModal";
@@ -41,7 +42,17 @@ export function ApplicantsPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    api<Row[]>(`/api/applicants?q=${encodeURIComponent(q)}`).then(setRows).catch(() => setRows([]));
+    const cached = !q.trim() ? readApplicantsListCache<Row>() : null;
+    if (cached) setRows(cached);
+    api<Row[]>(`/api/applicants?q=${encodeURIComponent(q)}`)
+      .then((data) => {
+        if (!q.trim()) writeApplicantsListCache(data);
+        setRows(data);
+      })
+      .catch(() => {
+        if (cached) setRows(cached);
+        else setRows([]);
+      });
   }, [q, listKey]);
 
   function closeModal() {
