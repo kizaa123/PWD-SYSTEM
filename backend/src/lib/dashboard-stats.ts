@@ -1,10 +1,12 @@
 import { all, get } from "../db/index.ts";
 import type { AuthUser } from "../lib/auth.ts";
 import { geoFilterSql } from "../lib/auth.ts";
-import { currentApplicationYear } from "../lib/applications-core.ts";
-
-/** Yearly dashboard counts open requests still in registration, not only submitted onward. */
-const YEAR_APP_EXCLUDE = "('cancelled', 'rejected')";
+import {
+  currentApplicationYear,
+  sqlApplicationIsSubstantive,
+  sqlProfileHasAppliedForSupportYear,
+  sqlProfileHasSubstantiveApplicationAnyYear,
+} from "../lib/applications-core.ts";
 
 export type YearCategorySlice = {
   category_code: string;
@@ -33,7 +35,7 @@ export type YearDashboardStats = {
 function yearAppWhere(user: AuthUser, year: number) {
   const geo = geoFilterSql(user);
   return {
-    sql: `${geo.sql} AND a.application_year = ? AND a.status NOT IN ${YEAR_APP_EXCLUDE}`,
+    sql: `${geo.sql} AND a.application_year = ? AND ${sqlApplicationIsSubstantive("a")}`,
     params: [...geo.params, year],
   };
 }
@@ -77,7 +79,7 @@ export function loadYearDashboardStats(user: AuthUser, year: number | null = cur
 
   const geoApp = geoFilterSql(user);
   const appliedWhere = allYears
-    ? { sql: `${geoApp.sql} AND a.status NOT IN ${YEAR_APP_EXCLUDE}`, params: [...geoApp.params] }
+    ? { sql: `${geoApp.sql} AND ${sqlApplicationIsSubstantive("a")}`, params: [...geoApp.params] }
     : yearAppWhere(user, year as number);
 
   const applied =
@@ -86,27 +88,19 @@ export function loadYearDashboardStats(user: AuthUser, year: number | null = cur
       appliedWhere.params,
     )?.c ?? 0;
 
+  const notAppliedClause = allYears
+    ? sqlProfileHasSubstantiveApplicationAnyYear("ap.id", false)
+    : sqlProfileHasAppliedForSupportYear(year as number, "ap.id", false).sql;
+
   const notApplied = allYears
     ? (get<{ c: number }>(
-        `SELECT COUNT(*) AS c FROM applicant_profiles ap
-         WHERE ${geoAp.sql}
-         AND NOT EXISTS (
-           SELECT 1 FROM applications ax
-           WHERE ax.applicant_profile_id = ap.id
-             AND ax.status NOT IN ${YEAR_APP_EXCLUDE}
-         )`,
+        `SELECT COUNT(*) AS c FROM applicant_profiles ap WHERE ${geoAp.sql} AND ${notAppliedClause}`,
         [...geoAp.params],
       )?.c ?? 0)
     : (get<{ c: number }>(
         `SELECT COUNT(*) AS c FROM applicant_profiles ap
-         WHERE ${geoAp.sql} AND strftime('%Y', ap.created_at) = ?
-         AND NOT EXISTS (
-           SELECT 1 FROM applications ax
-           WHERE ax.applicant_profile_id = ap.id
-             AND ax.application_year = ?
-             AND ax.status NOT IN ${YEAR_APP_EXCLUDE}
-         )`,
-        [...geoAp.params, yearStr, year],
+         WHERE ${geoAp.sql} AND strftime('%Y', ap.created_at) = ? AND ${notAppliedClause}`,
+        [...geoAp.params, yearStr, ...(sqlProfileHasAppliedForSupportYear(year as number, "ap.id", false).params)],
       )?.c ?? 0);
 
   const broad = allYears

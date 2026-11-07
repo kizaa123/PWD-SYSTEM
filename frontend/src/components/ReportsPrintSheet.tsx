@@ -104,7 +104,7 @@ export function ReportsPrintSheet({
       </section>
 
       <section className="reports-print-section reports-print-page-break">
-        <h2 className="reports-print-section-title">Registered ({registeredPeople.length})</h2>
+        <h2 className="reports-print-section-title">Registered ({stats.registered})</h2>
         <table className="reports-print-table reports-print-roster">
           <thead>
             <tr>
@@ -136,7 +136,7 @@ export function ReportsPrintSheet({
       </section>
 
       <section className="reports-print-section reports-print-page-break">
-        <h2 className="reports-print-section-title">Applied ({appliedPeople.length})</h2>
+        <h2 className="reports-print-section-title">Applied ({stats.applied})</h2>
         <table className="reports-print-table reports-print-roster">
           <thead>
             <tr>
@@ -168,7 +168,7 @@ export function ReportsPrintSheet({
       </section>
 
       <section className="reports-print-section reports-print-page-break">
-        <h2 className="reports-print-section-title">Registered, not applied ({notAppliedPeople.length})</h2>
+        <h2 className="reports-print-section-title">Registered, not applied ({stats.notApplied})</h2>
         <table className="reports-print-table reports-print-roster">
           <thead>
             <tr>

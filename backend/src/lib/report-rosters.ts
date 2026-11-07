@@ -1,8 +1,11 @@
 import { all } from "../db/index.ts";
 import type { AuthUser } from "../lib/auth.ts";
 import { geoFilterSql } from "../lib/auth.ts";
-
-const YEAR_APP_EXCLUDE = "('cancelled', 'rejected', 'registration')";
+import {
+  sqlApplicationIsSubstantive,
+  sqlProfileHasAppliedForSupportYear,
+  sqlProfileHasSubstantiveApplicationAnyYear,
+} from "./applications-core.ts";
 
 export type ReportPersonRow = {
   applicant_ref: string;
@@ -94,32 +97,28 @@ export function loadReportRosters(user: AuthUser, year: number | null): {
     regParams,
   ).map(mapPersonRow);
 
+  const notAppliedYearClause =
+    year != null ? sqlProfileHasAppliedForSupportYear(year, "ap.id", false) : null;
+
   const notAppliedSql =
     year != null
       ? `SELECT ${PERSON_SELECT}
          ${PERSON_JOINS}
          WHERE ${geoAp.sql} AND strftime('%Y', ap.created_at) = ?
-         AND NOT EXISTS (
-           SELECT 1 FROM applications ax
-           WHERE ax.applicant_profile_id = ap.id
-             AND ax.application_year = ?
-             AND ax.status NOT IN ${YEAR_APP_EXCLUDE}
-         )
+         AND ${notAppliedYearClause!.sql}
          ORDER BY ap.created_at DESC
          LIMIT 5000`
       : `SELECT ${PERSON_SELECT}
          ${PERSON_JOINS}
          WHERE ${geoAp.sql}
-         AND NOT EXISTS (
-           SELECT 1 FROM applications ax
-           WHERE ax.applicant_profile_id = ap.id
-             AND ax.status NOT IN ${YEAR_APP_EXCLUDE}
-         )
+         AND ${sqlProfileHasSubstantiveApplicationAnyYear("ap.id", false)}
          ORDER BY ap.created_at DESC
          LIMIT 5000`;
 
   const notAppliedParams =
-    year != null ? [...geoAp.params, String(year), year] : [...geoAp.params];
+    year != null
+      ? [...geoAp.params, String(year), ...notAppliedYearClause!.params]
+      : [...geoAp.params];
 
   const notAppliedPeople = all<RawPerson>(notAppliedSql, notAppliedParams).map(mapPersonRow);
 
@@ -138,7 +137,7 @@ export function loadReportRosters(user: AuthUser, year: number | null): {
      LEFT JOIN caregiver_relationships cg_cr ON cg_cr.applicant_profile_id = ap.id AND cg_cr.status = 'active'
      LEFT JOIN persons cg_p ON cg_p.id = cg_cr.caregiver_person_id
      JOIN support_categories sc ON sc.code = a.category_code
-     WHERE ${geoApp.sql} AND a.status NOT IN ${YEAR_APP_EXCLUDE}${appYearSql}
+     WHERE ${geoApp.sql} AND ${sqlApplicationIsSubstantive("a")}${appYearSql}
      ORDER BY a.application_year DESC, a.created_at DESC
      LIMIT 5000`,
     appParams,

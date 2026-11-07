@@ -227,9 +227,9 @@ export function ReportsPage() {
             <div className="mt-4 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
               {(
                 [
-                  ["registered", `Registered (${data.registeredPeople.length})`],
-                  ["applied", `Applied (${data.appliedPeople.length})`],
-                  ["notApplied", `Not applied (${data.notAppliedPeople.length})`],
+                  ["registered", "Registered"],
+                  ["applied", "Applied"],
+                  ["notApplied", "Not applied"],
                 ] as const
               ).map(([id, label]) => (
                 <button

@@ -171,7 +171,7 @@ export function Layout() {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center gap-3 border-b border-navy/10 bg-surface px-4 py-3 md:hidden">
+          <header className="sticky top-0 z-[45] flex items-center gap-3 border-b border-navy/10 bg-surface px-4 py-3 md:hidden">
             <button
               type="button"
               className="rounded-xl p-3 text-navy hover:bg-canvas active:bg-canvas/80"

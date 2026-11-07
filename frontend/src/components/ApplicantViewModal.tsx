@@ -160,7 +160,7 @@ function ModalPassports({
   beneficiaryPhotoPath: string | null;
 }) {
   return (
-    <div className="flex shrink-0 items-start gap-2">
+    <div className="flex shrink-0 items-start gap-2 max-sm:mt-1">
       {isCaregiverReg ? (
         <>
           <RegisteredPassportPhoto
@@ -274,16 +274,19 @@ export function ApplicantViewModal({
   return (
     <>
       {registrationPrintSnapshot ? <RegistrationPrintSheet snapshot={registrationPrintSnapshot} /> : null}
-    <div className="no-print fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-xs sm:items-center sm:p-4" onClick={onClose}>
+    <div
+      className="no-print fixed inset-x-0 bottom-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-xs max-sm:top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:inset-0 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="applicant-modal-title"
-        className="relative flex max-h-[96vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-xl border border-slate-200 bg-white shadow-2xl sm:max-h-[92vh] sm:rounded-xl"
+        className="relative flex max-h-[calc(100dvh-3.75rem-env(safe-area-inset-top,0px))] w-full max-w-3xl flex-col overflow-hidden rounded-t-xl border border-slate-200 bg-white shadow-2xl sm:max-h-[92vh] sm:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <header className="flex items-start gap-2 border-b border-slate-200 bg-white px-4 py-4 sm:gap-5 sm:px-8 sm:py-5">
+        <header className="flex items-start gap-2 border-b border-slate-200 bg-white px-4 pb-4 pt-5 sm:gap-5 sm:px-8 sm:py-5">
           <div className="min-w-0 flex-1 pe-1 sm:pe-2">
             <div className="flex flex-wrap items-center gap-2">
               {applicant?.applicant_ref && (

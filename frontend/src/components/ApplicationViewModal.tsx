@@ -60,15 +60,18 @@ export function ApplicationViewModal({ applicationId, onClose }: Props) {
   return (
     <>
       {printSnapshot ? <ApplicationPrintSheet snapshot={printSnapshot} /> : null}
-    <div className="no-print fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-xs sm:items-center sm:p-4" onClick={onClose}>
+    <div
+      className="no-print fixed inset-x-0 bottom-0 z-[60] flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-xs max-sm:top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:inset-0 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="application-record-title"
-        className="relative flex max-h-[96vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-xl border border-slate-200 bg-canvas shadow-2xl sm:max-h-[92vh] sm:rounded-xl"
+        className="relative flex max-h-[calc(100dvh-3.75rem-env(safe-area-inset-top,0px))] w-full max-w-4xl flex-col overflow-hidden rounded-t-xl border border-slate-200 bg-canvas shadow-2xl sm:max-h-[92vh] sm:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-start gap-3 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+        <header className="flex items-start gap-3 border-b border-slate-200 bg-white px-4 pb-4 pt-5 sm:px-6 sm:py-4">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-teal">Application record</p>
             <h2 id="application-record-title" className="truncate text-lg font-bold text-navy">

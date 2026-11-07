@@ -30,8 +30,27 @@ export function completedApplicationForYear(profileId: string, year: number) {
 export function sqlSubstantiveYearApplication(alias = "", yearParam = "?"): string {
   const p = alias ? `${alias}.` : "";
   return `${p}application_year = ${yearParam}
-    AND ${p}status NOT IN ('cancelled', 'rejected')
+    AND ${sqlApplicationIsSubstantive(alias || "a")}`;
+}
+
+/** Whether an applications row counts as a real support request (excludes bare registration drafts). */
+export function sqlApplicationIsSubstantive(alias = "a"): string {
+  const p = `${alias}.`;
+  return `${p}status NOT IN ('cancelled', 'rejected')
     AND (${p}status != 'registration' OR ${p}office_use_qualified IN ('qualified', 'not_qualified'))`;
+}
+
+/** EXISTS / NOT EXISTS any substantive application year (all years). */
+export function sqlProfileHasSubstantiveApplicationAnyYear(
+  profileColumn = "ap.id",
+  hasApplied: boolean,
+): string {
+  const exists = hasApplied ? "EXISTS" : "NOT EXISTS";
+  return `${exists} (
+    SELECT 1 FROM applications ax
+    WHERE ax.applicant_profile_id = ${profileColumn}
+      AND ${sqlApplicationIsSubstantive("ax")}
+  )`;
 }
 
 /** Applicant has a substantive {year} request (past intake / registration-only drafts). */
