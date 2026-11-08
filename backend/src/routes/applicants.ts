@@ -5,6 +5,7 @@ import multer from "multer";
 import { all, db, get, now, run } from "../db/index.ts";
 import { COVERAGE_DISTRICT_CODE } from "../db/policy.ts";
 import { listAssistiveDeviceHistory } from "../lib/assistive-device-policy.ts";
+import { listStartupToolHistory } from "../lib/startup-tool-policy.ts";
 import {
   applicantProfileIdsAppliedForYear,
   createYearlyApplication,
@@ -378,6 +379,7 @@ applicantRouter.get("/:id", requirePermission("applicants.read", "applications.r
     caregivers: caregiversWithProfile,
     applications,
     assistive_device_history: listAssistiveDeviceHistory(row.id as string),
+    startup_tool_history: listStartupToolHistory(row.id as string),
     applied_current_year: appliedThisYear.has(row.id as string),
     application_year: year,
     current_year_application: yearApp ?? null,

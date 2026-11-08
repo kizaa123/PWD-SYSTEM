@@ -188,7 +188,10 @@ CREATE TABLE IF NOT EXISTS education_details (
   school_account_name TEXT,
   school_account_number TEXT,
   school_bank_name TEXT,
-  school_branch TEXT
+  school_branch TEXT,
+  device_key TEXT,
+  device_type TEXT,
+  device_other TEXT
 );
 
 CREATE TABLE IF NOT EXISTS health_details (
@@ -207,10 +210,12 @@ CREATE TABLE IF NOT EXISTS health_details (
 
 CREATE TABLE IF NOT EXISTS income_activity_details (
   application_id TEXT PRIMARY KEY REFERENCES applications(id) ON DELETE CASCADE,
-  subtype TEXT NOT NULL CHECK (subtype IN ('startup_capital','startup_tool')),
+  subtype TEXT NOT NULL,
   business_stage TEXT,
   business_activity TEXT,
-  item_specification TEXT
+  item_specification TEXT,
+  device_key TEXT,
+  device_type TEXT
 );
 
 CREATE TABLE IF NOT EXISTS caregiver_support_details (

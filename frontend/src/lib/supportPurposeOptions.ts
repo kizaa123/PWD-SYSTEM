@@ -5,7 +5,7 @@ export type EducationTrack = "formal" | "apprenticeship";
 export type FormalLevel = "basic" | "secondary" | "tertiary";
 export type ApprenticeshipType = "vocational" | "technical";
 export type EducationalSupportType = "school_fees" | "bursary" | "technical_aid";
-export type HealthNeed = "surgery" | "therapy" | "medication";
+export type HealthNeed = "assistive_device" | "medication" | "surgery" | "therapy";
 
 export type AssistiveDeviceKey =
   | "laptop"
@@ -60,7 +60,7 @@ export const EMPTY_PURPOSE_FORM: PurposeFormState = {
   schoolAccountNumber: "",
 };
 
-/** Official DACF assistive device checklist (wording as on the form). */
+/** Full checklist (historical / legacy records). */
 export const ASSISTIVE_DEVICE_OPTIONS: { key: AssistiveDeviceKey; label: string }[] = [
   { key: "laptop", label: "Laptop" },
   { key: "wheelchair", label: "Wheelchair" },
@@ -70,6 +70,35 @@ export const ASSISTIVE_DEVICE_OPTIONS: { key: AssistiveDeviceKey; label: string 
   { key: "braille_notes_taker", label: "Braille Notes-taker" },
   { key: "recorder", label: "Recorder" },
   { key: "accessible_mobile_phone", label: "Accessible mobile phone" },
+  { key: "other", label: "Other" },
+];
+
+/** Education — technical aid devices only. */
+export const EDUCATION_TECHNICAL_AID_OPTIONS: { key: AssistiveDeviceKey; label: string }[] = [
+  { key: "laptop", label: "Laptop" },
+  { key: "recorder", label: "Recorder" },
+  { key: "accessible_mobile_phone", label: "Accessible mobile phone" },
+  { key: "braille_notes_taker", label: "Braille Notes-taker" },
+  { key: "other", label: "Other" },
+];
+
+/** Health — mobility and sensory assistive devices. */
+export const HEALTH_ASSISTIVE_DEVICE_OPTIONS: { key: AssistiveDeviceKey; label: string }[] = [
+  { key: "wheelchair", label: "Wheelchair" },
+  { key: "hearing_aid", label: "Hearing Aid" },
+  { key: "white_cain", label: "White Cain" },
+  { key: "dictator", label: "Dictator" },
+  { key: "braille_notes_taker", label: "Braille Notes-taker" },
+  { key: "other", label: "Other" },
+];
+
+/** Income — start-up tools (includes some devices plus custom equipment via Other). */
+export const STARTUP_TOOL_DEVICE_OPTIONS: { key: AssistiveDeviceKey; label: string }[] = [
+  { key: "laptop", label: "Laptop" },
+  { key: "recorder", label: "Recorder" },
+  { key: "accessible_mobile_phone", label: "Accessible mobile phone" },
+  { key: "wheelchair", label: "Wheelchair" },
+  { key: "hearing_aid", label: "Hearing Aid" },
   { key: "other", label: "Other" },
 ];
 
@@ -94,9 +123,15 @@ const EDUCATIONAL_SUPPORT_LABEL: Record<EducationalSupportType, string> = {
 };
 
 const HEALTH_NEED_LABEL: Record<HealthNeed, string> = {
+  assistive_device: "Assistive device",
+  medication: "Medication",
   surgery: "Surgery",
   therapy: "Therapy",
-  medication: "Medication",
+};
+
+const INCOME_SUPPORT_LABEL: Record<IncomeSupportType, string> = {
+  startup_capital: "Capital",
+  startup_tool: "Start-up tool",
 };
 
 export function assistiveDeviceKeyFromHistoryRow(row: {
@@ -132,11 +167,21 @@ export function assistiveDeviceLabelForKey(key: AssistiveDeviceKey | "", otherTe
   return ASSISTIVE_DEVICE_OPTIONS.find((o) => o.key === key)?.label ?? key;
 }
 
+export function assistiveDeviceKeyFromPurposeForm(categoryCode: string, form: PurposeFormState): AssistiveDeviceKey | "" {
+  if (categoryCode === "education" && form.educationalSupportType === "technical_aid") {
+    return form.assistiveDeviceType;
+  }
+  if (categoryCode === "health" && form.healthNeed === "assistive_device") {
+    return form.assistiveDeviceType;
+  }
+  return "";
+}
+
 function assistiveDeviceTypeSummary(form: PurposeFormState): string {
   return assistiveDeviceLabelForKey(form.assistiveDeviceType, form.assistiveDeviceOther);
 }
 
-export function purposeFormForCategory(categoryCode: string): PurposeFormState {
+export function purposeFormForCategory(_categoryCode: string): PurposeFormState {
   return { ...EMPTY_PURPOSE_FORM };
 }
 
@@ -144,9 +189,12 @@ export function validatePurposeForm(categoryCode: string, form: PurposeFormState
   switch (categoryCode) {
     case "income_generating": {
       if (!form.economicActivity.trim()) return "Enter the type of economic activity.";
-      if (!form.incomeSupportType) return "Select Capital or Start-up Tool.";
+      if (!form.incomeSupportType) return "Select Capital or Start-up tool.";
+      if (form.incomeSupportType === "startup_capital" && !form.itemSpecification.trim()) {
+        return "State what the capital will be used for.";
+      }
       if (form.incomeSupportType === "startup_tool" && !form.itemSpecification.trim()) {
-        return "Specify the start-up tool or item.";
+        return "Specify the start-up tool or equipment needed.";
       }
       return null;
     }
@@ -161,11 +209,24 @@ export function validatePurposeForm(categoryCode: string, form: PurposeFormState
         if (!form.apprenticeshipType) return "Select Vocational or Technical apprenticeship.";
       }
       if (!form.educationalSupportType) return "Select the type of educational support.";
+      if (form.educationalSupportType === "technical_aid") {
+        if (!form.assistiveDeviceType) return "Select the technical aid device needed.";
+        if (form.assistiveDeviceType === "other" && !form.assistiveDeviceOther.trim()) {
+          return "Specify the education device needed.";
+        }
+      }
       return null;
     }
-    case "health":
-      if (!form.healthNeed) return "Select Surgery, Therapy, or Medication.";
+    case "health": {
+      if (!form.healthNeed) return "Select Assistive device, Medication, Surgery, or Therapy.";
+      if (form.healthNeed === "assistive_device") {
+        if (!form.assistiveDeviceType) return "Select or specify the assistive device needed.";
+        if (form.assistiveDeviceType === "other" && !form.assistiveDeviceOther.trim()) {
+          return "State the specific device (e.g. wheelchair).";
+        }
+      }
       return null;
+    }
     case "assistive_device": {
       if (!form.assistiveDeviceType) {
         return "Select one assistive device to request for this year.";
@@ -195,13 +256,22 @@ export function validatePurposeForm(categoryCode: string, form: PurposeFormState
 }
 
 export function buildDetailsFromPurposeForm(categoryCode: string, form: PurposeFormState): Record<string, unknown> {
+  const deviceKey = assistiveDeviceKeyFromPurposeForm(categoryCode, form);
+  const deviceLabel = deviceKey ? assistiveDeviceLabelForKey(deviceKey, form.assistiveDeviceOther) : null;
+
   switch (categoryCode) {
-    case "income_generating":
+    case "income_generating": {
+      const type = form.incomeSupportType;
+      const subtype = type === "startup_tool" ? "startup_tool" : "startup_capital";
       return {
-        subtype: form.incomeSupportType === "startup_tool" ? "startup_tool" : "startup_capital",
+        subtype,
         businessActivity: form.economicActivity.trim(),
-        itemSpecification: form.itemSpecification.trim() || null,
+        itemSpecification:
+          type === "startup_capital" || type === "startup_tool"
+            ? form.itemSpecification.trim() || null
+            : null,
       };
+    }
     case "education": {
       const isApprenticeship = form.educationTrack === "apprenticeship";
       return {
@@ -217,18 +287,35 @@ export function buildDetailsFromPurposeForm(categoryCode: string, form: PurposeF
         supportType: EDUCATIONAL_SUPPORT_LABEL[form.educationalSupportType as EducationalSupportType],
         schoolName: form.schoolName.trim() || null,
         schoolAccountNumber: form.schoolAccountNumber.trim() || null,
+        assistiveDeviceKey:
+          form.educationalSupportType === "technical_aid" ? deviceKey || null : null,
+        assistiveDeviceType:
+          form.educationalSupportType === "technical_aid" ? deviceLabel : null,
+        deviceOther:
+          form.educationalSupportType === "technical_aid" && form.assistiveDeviceType === "other"
+            ? form.assistiveDeviceOther.trim() || null
+            : null,
       };
     }
     case "health": {
-      const need = form.healthNeed as HealthNeed;
-      const label = HEALTH_NEED_LABEL[need];
-      if (need === "medication") {
+      if (form.healthNeed === "medication") {
         return { healthPurpose: "For medication" };
       }
-      if (need === "therapy") {
+      if (form.healthNeed === "therapy") {
         return { healthPurpose: "For Therapy" };
       }
-      return { healthPurpose: label };
+      if (form.healthNeed === "surgery") {
+        return { healthPurpose: "Surgery" };
+      }
+      if (form.healthNeed === "assistive_device") {
+        return {
+          healthPurpose: "Assistive device",
+          assistiveDeviceKey: deviceKey || null,
+          assistiveDeviceType: deviceLabel || null,
+          healthPurposeOther: form.assistiveDeviceType === "other" ? form.assistiveDeviceOther.trim() || null : null,
+        };
+      }
+      return {};
     }
     case "assistive_device": {
       const key = form.assistiveDeviceType;
@@ -262,10 +349,14 @@ export function buildPurposeSummaryFromForm(
   const parts: string[] = [categoryLabel];
   switch (categoryCode) {
     case "income_generating": {
-      const kind = form.incomeSupportType === "startup_tool" ? "Start-up Tool" : "Capital";
-      parts.push(kind);
+      if (form.incomeSupportType) parts.push(INCOME_SUPPORT_LABEL[form.incomeSupportType]);
       if (form.economicActivity.trim()) parts.push(form.economicActivity.trim());
-      if (form.itemSpecification.trim()) parts.push(`Item: ${form.itemSpecification.trim()}`);
+      if (form.incomeSupportType === "startup_capital" && form.itemSpecification.trim()) {
+        parts.push(form.itemSpecification.trim());
+      }
+      if (form.incomeSupportType === "startup_tool" && form.itemSpecification.trim()) {
+        parts.push(form.itemSpecification.trim());
+      }
       break;
     }
     case "education": {
@@ -282,10 +373,20 @@ export function buildPurposeSummaryFromForm(
       if (form.educationalSupportType) {
         parts.push(EDUCATIONAL_SUPPORT_LABEL[form.educationalSupportType]);
       }
+      if (form.educationalSupportType === "technical_aid") {
+        const devices = assistiveDeviceTypeSummary(form);
+        if (devices) parts.push(devices);
+      }
       break;
     }
     case "health":
-      if (form.healthNeed) parts.push(HEALTH_NEED_LABEL[form.healthNeed]);
+      if (form.healthNeed === "assistive_device") {
+        parts.push("Assistive device");
+        const devices = assistiveDeviceTypeSummary(form);
+        if (devices) parts.push(devices);
+      } else if (form.healthNeed) {
+        parts.push(HEALTH_NEED_LABEL[form.healthNeed]);
+      }
       break;
     case "assistive_device": {
       const devices = assistiveDeviceTypeSummary(form);
@@ -312,10 +413,13 @@ export function applicationPurposePrintRows(categoryCode: string, form: PurposeF
       rows.push({ label: "Type of economic activity", value: form.economicActivity.trim() || "—" });
       rows.push({
         label: "Type of support",
-        value: form.incomeSupportType === "startup_tool" ? "Start-up tool" : form.incomeSupportType === "startup_capital" ? "Capital" : "—",
+        value: form.incomeSupportType ? INCOME_SUPPORT_LABEL[form.incomeSupportType] : "—",
       });
-      if (form.itemSpecification.trim()) {
-        rows.push({ label: "Item specified", value: form.itemSpecification.trim() });
+      if (form.incomeSupportType === "startup_capital" && form.itemSpecification.trim()) {
+        rows.push({ label: "Capital use", value: form.itemSpecification.trim() });
+      }
+      if (form.incomeSupportType === "startup_tool") {
+        rows.push({ label: "Start-up tool", value: form.itemSpecification.trim() || "—" });
       }
       break;
     case "education":
@@ -341,6 +445,9 @@ export function applicationPurposePrintRows(categoryCode: string, form: PurposeF
           ? EDUCATIONAL_SUPPORT_LABEL[form.educationalSupportType as EducationalSupportType]
           : "—",
       });
+      if (form.educationalSupportType === "technical_aid") {
+        rows.push({ label: "Technical aid device", value: assistiveDeviceTypeSummary(form) || "—" });
+      }
       if (form.schoolName.trim()) rows.push({ label: "School name", value: form.schoolName.trim() });
       if (form.schoolAccountNumber.trim()) {
         rows.push({ label: "School account No.", value: form.schoolAccountNumber.trim() });
@@ -351,6 +458,9 @@ export function applicationPurposePrintRows(categoryCode: string, form: PurposeF
         label: "Type of support",
         value: form.healthNeed ? HEALTH_NEED_LABEL[form.healthNeed] : "—",
       });
+      if (form.healthNeed === "assistive_device") {
+        rows.push({ label: "Device requested", value: assistiveDeviceTypeSummary(form) || "—" });
+      }
       break;
     case "assistive_device":
       rows.push({
@@ -379,11 +489,5 @@ export function applicationPurposePrintRows(categoryCode: string, form: PurposeF
   return rows;
 }
 
-/** Categories on the individual DACF application. */
-export const APPLICATION_PURPOSE_CATEGORY_ORDER = [
-  "income_generating",
-  "education",
-  "health",
-  "assistive_device",
-  "caregivers",
-] as const;
+/** Only these three categories appear on the yearly application form. */
+export const APPLICATION_PURPOSE_CATEGORY_ORDER = ["income_generating", "education", "health"] as const;

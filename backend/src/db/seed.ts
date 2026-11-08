@@ -157,8 +157,8 @@ export function seedIfEmpty(db: DB) {
     { code: "education", name: "Educational Support", description: "School fees, bursary, technical aid and apprenticeship", sort: 1, docs: ["passport_photo", "ghana_card", "admission_letter", "school_invoice"] },
     { code: "health", name: "Health Support", description: "Medication, surgery, therapy and related medical support", sort: 2, docs: ["passport_photo", "ghana_card", "medical_receipt"] },
     { code: "income_generating", name: "Income Generating Activities", description: "Start-up capital or start-up tools", sort: 3, docs: ["passport_photo", "ghana_card"] },
-    { code: "caregivers", name: "Caregivers Support", description: "Support for caregivers of persons with disability", sort: 4, docs: ["passport_photo", "ghana_card", "caregiver_ghana_card"] },
-    { code: "assistive_device", name: "Assistive Device", description: "Official DACF form category — wheelchair, hearing aid, braille and related devices", sort: 5, docs: ["passport_photo", "ghana_card", "prescription"] },
+    { code: "caregivers", name: "Caregivers Support", description: "Support for caregivers of persons with disability", sort: 4, docs: ["passport_photo", "ghana_card", "caregiver_ghana_card"], active: 0 },
+    { code: "assistive_device", name: "Assistive Device", description: "Legacy category — devices are requested under Education, Health, or Income support", sort: 5, docs: ["passport_photo", "ghana_card", "prescription"], active: 0 },
   ];
   for (const c of categories) {
     insert(db, "support_categories", {
@@ -168,7 +168,7 @@ export function seedIfEmpty(db: DB) {
       description: c.description,
       parent_code: null,
       required_documents: JSON.stringify(c.docs),
-      is_active: 1,
+      is_active: (c as { active?: number }).active ?? 1,
       sort_order: c.sort,
     });
   }

@@ -431,13 +431,24 @@ export function ApplicantEditPage() {
                 ]}
                 onChange={(v) => set("caregiverSex", v)}
               />
-              <Field label="Level of education">
-                <EducationLevelTextInput
-                  className={inputClass}
-                  value={form.caregiverEducationLevel}
-                  onChange={(v) => set("caregiverEducationLevel", v)}
+              <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
+                <RadioGroup
+                  label="Type of residence"
+                  name="caregiverResidenceType"
+                  value={form.caregiverResidenceType}
+                  options={RESIDENCE_OPTIONS}
+                  onChange={(v) => set("caregiverResidenceType", v)}
+                  otherValue={form.caregiverResidenceOther}
+                  onOther={(v) => set("caregiverResidenceOther", v)}
                 />
-              </Field>
+                <Field label="Level of education">
+                  <EducationLevelTextInput
+                    className={inputClass}
+                    value={form.caregiverEducationLevel}
+                    onChange={(v) => set("caregiverEducationLevel", v)}
+                  />
+                </Field>
+              </div>
               <Field label="Town or community">
                 <input
                   className={inputClass}
@@ -452,15 +463,6 @@ export function ApplicantEditPage() {
                   onChange={(e) => set("caregiverHomeAddress", e.target.value)}
                 />
               </Field>
-              <RadioGroup
-                label="Type of residence"
-                name="caregiverResidenceType"
-                value={form.caregiverResidenceType}
-                options={RESIDENCE_OPTIONS}
-                onChange={(v) => set("caregiverResidenceType", v)}
-                otherValue={form.caregiverResidenceOther}
-                onOther={(v) => set("caregiverResidenceOther", v)}
-              />
               <RadioGroup
                 label="Relationship to beneficiary"
                 name="caregiverRelationship"

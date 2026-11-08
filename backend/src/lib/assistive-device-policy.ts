@@ -10,14 +10,22 @@ export type AssistiveDeviceHistoryRow = {
   assistive_device_type: string | null;
 };
 
+/** Device requests across education (technical aid), health, and legacy assistive category. */
 export function listAssistiveDeviceHistory(applicantProfileId: string): AssistiveDeviceHistoryRow[] {
   return all<AssistiveDeviceHistoryRow>(
     `SELECT a.id, a.reference, a.application_year, a.status, a.created_at,
-            hd.assistive_device_key, hd.assistive_device_type
+            COALESCE(hd.assistive_device_key, ed.device_key) AS assistive_device_key,
+            COALESCE(
+              NULLIF(TRIM(hd.assistive_device_type), ''),
+              NULLIF(TRIM(ed.device_type), '')
+            ) AS assistive_device_type
      FROM applications a
-     INNER JOIN health_details hd ON hd.application_id = a.id
-     WHERE a.applicant_profile_id = ? AND a.category_code = 'assistive_device'
+     LEFT JOIN health_details hd ON hd.application_id = a.id
+       AND (a.category_code IN ('health', 'assistive_device') AND hd.assistive_device_key IS NOT NULL)
+     LEFT JOIN education_details ed ON ed.application_id = a.id AND ed.device_key IS NOT NULL
+     WHERE a.applicant_profile_id = ?
        AND a.status NOT IN ('rejected', 'cancelled')
+       AND (hd.application_id IS NOT NULL OR ed.application_id IS NOT NULL)
      ORDER BY a.application_year DESC, a.created_at DESC`,
     [applicantProfileId],
   );
@@ -88,7 +96,7 @@ export function validateAssistiveDeviceNotPreviouslyApplied(
   );
   const applied = assistiveDeviceKeysFromHistory(history);
   if (applied.includes(deviceKey)) {
-    return "This device has been applied for already.";
+    return "This device has been requested before and cannot be applied for again.";
   }
   return null;
 }
@@ -97,10 +105,28 @@ export function validateAssistiveDeviceDetails(details: Record<string, unknown>)
   const key = details.assistiveDeviceKey != null ? String(details.assistiveDeviceKey).trim() : "";
   if (!key) return "Select exactly one assistive device type.";
   const typeLabel = details.assistiveDeviceType != null ? String(details.assistiveDeviceType).trim() : "";
-  if (!typeLabel) return "Assistive device type label is required.";
+  if (!typeLabel && key !== "other") return "Assistive device type label is required.";
   if (key === "other") {
-    const other = details.healthPurposeOther != null ? String(details.healthPurposeOther).trim() : "";
-    if (!other) return "Specify the other assistive device type.";
+    const other =
+      details.healthPurposeOther != null
+        ? String(details.healthPurposeOther).trim()
+        : details.deviceOther != null
+          ? String(details.deviceOther).trim()
+          : "";
+    if (!other) return "Specify the other device type.";
   }
   return null;
+}
+
+/** When application details include a device key, validate selection and repeat rules. */
+export function validateDeviceRequestInDetails(
+  applicantProfileId: string,
+  details: Record<string, unknown>,
+  excludeApplicationId?: string,
+): string | null {
+  const key = details.assistiveDeviceKey != null ? String(details.assistiveDeviceKey).trim() : "";
+  if (!key) return null;
+  const detailErr = validateAssistiveDeviceDetails(details);
+  if (detailErr) return detailErr;
+  return validateAssistiveDeviceNotPreviouslyApplied(applicantProfileId, key, excludeApplicationId);
 }

@@ -68,6 +68,13 @@ function migrateApplicationWorkflow(db: DatabaseSync) {
   if (!userCols.some((c) => c.name === "last_seen_at")) {
     db.exec("ALTER TABLE users ADD COLUMN last_seen_at TEXT");
   }
+  const eduCols = db.prepare("PRAGMA table_info(education_details)").all() as { name: string }[];
+  if (!eduCols.some((c) => c.name === "device_key")) {
+    db.exec("ALTER TABLE education_details ADD COLUMN device_key TEXT");
+    db.exec("ALTER TABLE education_details ADD COLUMN device_type TEXT");
+    db.exec("ALTER TABLE education_details ADD COLUMN device_other TEXT");
+  }
+  migrateIncomeActivitySubtypes(db);
   db.prepare(
     "UPDATE applications SET application_year = COALESCE(application_year, CAST(strftime('%Y', created_at) AS INTEGER))",
   ).run();
@@ -89,6 +96,27 @@ function migrateApplicationWorkflow(db: DatabaseSync) {
 }
 
 /** Apply the current operating rules to a new or already-seeded database. */
+function migrateIncomeActivitySubtypes(db: DatabaseSync) {
+  const incomeCols = db.prepare("PRAGMA table_info(income_activity_details)").all() as { name: string }[];
+  if (!incomeCols.some((c) => c.name === "device_key")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS income_activity_details_new (
+        application_id TEXT PRIMARY KEY REFERENCES applications(id) ON DELETE CASCADE,
+        subtype TEXT NOT NULL,
+        business_stage TEXT,
+        business_activity TEXT,
+        item_specification TEXT,
+        device_key TEXT,
+        device_type TEXT
+      )`);
+    db.exec(`
+      INSERT INTO income_activity_details_new (application_id, subtype, business_stage, business_activity, item_specification, device_key, device_type)
+      SELECT application_id, subtype, business_stage, business_activity, item_specification, NULL, NULL FROM income_activity_details`);
+    db.exec("DROP TABLE income_activity_details");
+    db.exec("ALTER TABLE income_activity_details_new RENAME TO income_activity_details");
+  }
+}
+
 function migrateDemoStaffEmails(db: DatabaseSync) {
   db.prepare("UPDATE users SET email = ? WHERE email = ?").run(DEMO_WELFARE_EMAIL, "register@accra.gh");
   db.prepare("UPDATE users SET email = ? WHERE email = ?").run(DEMO_ADMIN_EMAIL, "admin@ncpd.gov.gh");
@@ -139,6 +167,8 @@ export function applyOperatingPolicy(db: DatabaseSync) {
   for (const [code, docs] of Object.entries(CATEGORY_DOCUMENTS)) {
     db.prepare("UPDATE support_categories SET required_documents = ? WHERE code = ?").run(JSON.stringify(docs), code);
   }
+  db.prepare("UPDATE support_categories SET is_active = 0 WHERE code IN ('caregivers', 'assistive_device')").run();
+  db.prepare("UPDATE support_categories SET is_active = 1 WHERE code IN ('education', 'health', 'income_generating')").run();
 
   const committeeRoleId = ensureRole(
     db,

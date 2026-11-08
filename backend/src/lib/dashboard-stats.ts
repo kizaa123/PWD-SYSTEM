@@ -174,7 +174,11 @@ export function loadYearDashboardStats(user: AuthUser, year: number | null = cur
   const incomeBars = all<{ label: string; requested_pesewas: number; applications: number }>(
     `SELECT COALESCE(
               NULLIF(TRIM(iad.business_activity), ''),
-              CASE iad.subtype WHEN 'startup_capital' THEN 'Startup capital' WHEN 'startup_tool' THEN 'Startup tools / equipment' ELSE 'Income generating activity' END,
+              CASE iad.subtype
+                WHEN 'startup_capital' THEN 'Startup capital'
+                WHEN 'startup_tool' THEN COALESCE(NULLIF(TRIM(iad.device_type), ''), NULLIF(TRIM(iad.item_specification), ''), 'Startup tools / equipment')
+                ELSE 'Income generating activity'
+              END,
               'Income activity (unspecified)'
             ) AS label,
             COALESCE(SUM(a.amount_requested_pesewas), 0) AS requested_pesewas,

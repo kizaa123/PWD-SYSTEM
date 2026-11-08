@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import {
-  ASSISTIVE_DEVICE_OPTIONS,
-  CAREGIVER_PURPOSE_OPTIONS,
+  EDUCATION_TECHNICAL_AID_OPTIONS,
+  HEALTH_ASSISTIVE_DEVICE_OPTIONS,
   type AssistiveDeviceKey,
   type PurposeFormState,
 } from "../lib/supportPurposeOptions";
+import {
+  isStartupToolPreviouslyRequested,
+  startupToolLabelsFromHistory,
+  type StartupToolHistoryRow,
+} from "../lib/startupToolPolicy";
 import { Field, inputClass } from "./StatusBadge";
 
 function SectionTitle({ n, title }: { n: number; title: string }) {
@@ -51,11 +56,84 @@ function RadioRow({
   );
 }
 
+function DevicePicker({
+  legend,
+  options,
+  name,
+  selectedKey,
+  otherText,
+  appliedSet,
+  onSelect,
+  onOtherText,
+  onBlocked,
+}: {
+  legend: string;
+  options: { key: AssistiveDeviceKey; label: string }[];
+  name: string;
+  selectedKey: AssistiveDeviceKey | "";
+  otherText: string;
+  appliedSet: Set<AssistiveDeviceKey>;
+  onSelect: (key: AssistiveDeviceKey) => void;
+  onOtherText: (text: string) => void;
+  onBlocked: (message: string) => void;
+}) {
+  return (
+    <fieldset className="space-y-2 border-t border-slate-200 pt-3">
+      <legend className="text-xs font-medium text-muted">{legend}</legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map(({ key, label }) => {
+          const alreadyApplied = appliedSet.has(key);
+          if (alreadyApplied) {
+            return (
+              <label
+                key={key}
+                className="flex cursor-not-allowed items-center gap-2 text-sm font-medium text-red-600"
+                onClick={() => onBlocked("This device has been requested before and cannot be applied for again.")}
+              >
+                <input
+                  type="checkbox"
+                  checked
+                  readOnly
+                  tabIndex={-1}
+                  className="h-4 w-4 cursor-not-allowed accent-red-600"
+                  aria-label={`${label} — already requested`}
+                />
+                {label}
+              </label>
+            );
+          }
+          return (
+            <RadioRow
+              key={key}
+              name={name}
+              value={key}
+              checked={selectedKey === key}
+              onChange={() => onSelect(key)}
+              label={label}
+            />
+          );
+        })}
+      </div>
+      {selectedKey === "other" && (
+        <Field label="Other — specify device">
+          <input
+            className={inputClass}
+            value={otherText}
+            onChange={(e) => onOtherText(e.target.value)}
+            placeholder="Type the specific device needed"
+          />
+        </Field>
+      )}
+    </fieldset>
+  );
+}
+
 type Props = {
   categoryCode: string;
   value: PurposeFormState;
   onChange: (next: PurposeFormState) => void;
   previouslyAppliedDeviceKeys?: AssistiveDeviceKey[];
+  startupToolHistory?: StartupToolHistoryRow[];
 };
 
 export function SupportPurposeDetails({
@@ -63,22 +141,42 @@ export function SupportPurposeDetails({
   value,
   onChange,
   previouslyAppliedDeviceKeys = [],
+  startupToolHistory = [],
 }: Props) {
   const [deviceBlockMessage, setDeviceBlockMessage] = useState("");
   const appliedSet = new Set(previouslyAppliedDeviceKeys);
+  const previouslyRequestedStartupTools = startupToolLabelsFromHistory(startupToolHistory);
 
   useEffect(() => {
     setDeviceBlockMessage("");
-  }, [categoryCode, previouslyAppliedDeviceKeys]);
+  }, [categoryCode, previouslyAppliedDeviceKeys, startupToolHistory]);
+
+  useEffect(() => {
+    if (categoryCode !== "income_generating" || value.incomeSupportType !== "startup_tool") return;
+    const typed = value.itemSpecification.trim();
+    if (!typed) {
+      setDeviceBlockMessage("");
+      return;
+    }
+    if (isStartupToolPreviouslyRequested(typed, startupToolHistory)) {
+      setDeviceBlockMessage("This start-up tool has been requested before and cannot be applied for again.");
+    } else {
+      setDeviceBlockMessage("");
+    }
+  }, [categoryCode, value.incomeSupportType, value.itemSpecification, startupToolHistory]);
 
   function patch(partial: Partial<PurposeFormState>) {
     onChange({ ...value, ...partial });
   }
 
+  function onDeviceBlocked(message: string) {
+    setDeviceBlockMessage(message);
+  }
+
   if (categoryCode === "income_generating") {
     return (
       <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-        <SectionTitle n={1} title="Income generation" />
+        <SectionTitle n={1} title="Economic generation" />
         <Field label="Type of economic activity">
           <input
             className={inputClass}
@@ -89,31 +187,84 @@ export function SupportPurposeDetails({
         </Field>
         <fieldset className="space-y-2">
           <legend className="text-xs font-medium text-muted">Type of support</legend>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <RadioRow
-              name="incomeSupportType"
-              value="startup_capital"
-              checked={value.incomeSupportType === "startup_capital"}
-              onChange={() => patch({ incomeSupportType: "startup_capital" })}
-              label="Capital"
-            />
-            <RadioRow
-              name="incomeSupportType"
-              value="startup_tool"
-              checked={value.incomeSupportType === "startup_tool"}
-              onChange={() => patch({ incomeSupportType: "startup_tool" })}
-              label="Start-up tool"
-            />
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(
+              [
+                ["startup_capital", "Capital"],
+                ["startup_tool", "Start-up tool"],
+              ] as const
+            ).map(([key, label]) => (
+              <RadioRow
+                key={key}
+                name="incomeSupportType"
+                value={key}
+                checked={value.incomeSupportType === key}
+                onChange={() =>
+                  patch({
+                    incomeSupportType: key,
+                    itemSpecification: "",
+                    assistiveDeviceType: "",
+                    assistiveDeviceOther: "",
+                  })
+                }
+                label={label}
+              />
+            ))}
           </div>
         </fieldset>
-        <Field label="Specify item (required for start-up tool)">
-          <input
-            className={inputClass}
-            value={value.itemSpecification}
-            onChange={(e) => patch({ itemSpecification: e.target.value })}
-            placeholder="Item or equipment to be provided"
-          />
-        </Field>
+        {value.incomeSupportType === "startup_capital" && (
+          <Field label="What will the capital be used for?">
+            <input
+              className={inputClass}
+              value={value.itemSpecification}
+              onChange={(e) => patch({ itemSpecification: e.target.value })}
+              placeholder="e.g. stock, rent, raw materials"
+            />
+          </Field>
+        )}
+        {value.incomeSupportType === "startup_tool" && (
+          <div className="space-y-3 border-t border-slate-200 pt-3">
+            {previouslyRequestedStartupTools.length > 0 ? (
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-medium text-muted">Previously requested start-up tools</legend>
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {previouslyRequestedStartupTools.map((tool) => (
+                    <li
+                      key={tool}
+                      className="flex cursor-not-allowed items-center gap-2 text-sm font-medium text-red-600"
+                    >
+                      <input
+                        type="checkbox"
+                        checked
+                        readOnly
+                        tabIndex={-1}
+                        className="h-4 w-4 cursor-not-allowed accent-red-600"
+                        aria-label={`${tool} — already requested`}
+                      />
+                      {tool}
+                    </li>
+                  ))}
+                </ul>
+              </fieldset>
+            ) : null}
+            <Field label="Start-up tool or equipment needed">
+              <input
+                className={inputClass}
+                value={value.itemSpecification}
+                onChange={(e) => {
+                  setDeviceBlockMessage("");
+                  patch({ itemSpecification: e.target.value });
+                }}
+                placeholder="e.g. fufu machine, freezer"
+              />
+            </Field>
+            {deviceBlockMessage ? (
+              <p className="text-sm font-medium text-red-600" role="alert">
+                {deviceBlockMessage}
+              </p>
+            ) : null}
+          </div>
+        )}
       </div>
     );
   }
@@ -136,6 +287,8 @@ export function SupportPurposeDetails({
                   formalLevel: "",
                   qualificationPursued: "",
                   educationalSupportType: "",
+                  assistiveDeviceType: "",
+                  assistiveDeviceOther: "",
                 })
               }
               label="Formal (Basic / Secondary / Tertiary)"
@@ -151,6 +304,8 @@ export function SupportPurposeDetails({
                   qualificationPursued: "",
                   apprenticeshipType: "",
                   educationalSupportType: "",
+                  assistiveDeviceType: "",
+                  assistiveDeviceOther: "",
                 })
               }
               label="Apprenticeship"
@@ -179,6 +334,8 @@ export function SupportPurposeDetails({
                       formalLevel: level,
                       qualificationPursued: level === "tertiary" ? value.qualificationPursued : "",
                       educationalSupportType: "",
+                      assistiveDeviceType: "",
+                      assistiveDeviceOther: "",
                     })
                   }
                   label={label}
@@ -206,14 +363,18 @@ export function SupportPurposeDetails({
                 name="apprenticeshipType"
                 value="vocational"
                 checked={value.apprenticeshipType === "vocational"}
-                onChange={() => patch({ apprenticeshipType: "vocational", educationalSupportType: "" })}
+                onChange={() =>
+                  patch({ apprenticeshipType: "vocational", educationalSupportType: "", assistiveDeviceType: "", assistiveDeviceOther: "" })
+                }
                 label="Vocational"
               />
               <RadioRow
                 name="apprenticeshipType"
                 value="technical"
                 checked={value.apprenticeshipType === "technical"}
-                onChange={() => patch({ apprenticeshipType: "technical", educationalSupportType: "" })}
+                onChange={() =>
+                  patch({ apprenticeshipType: "technical", educationalSupportType: "", assistiveDeviceType: "", assistiveDeviceOther: "" })
+                }
                 label="Technical"
               />
             </div>
@@ -236,12 +397,45 @@ export function SupportPurposeDetails({
                   name="educationalSupportType"
                   value={key}
                   checked={value.educationalSupportType === key}
-                  onChange={() => patch({ educationalSupportType: key })}
+                  onChange={() =>
+                    patch({
+                      educationalSupportType: key,
+                      assistiveDeviceType: "",
+                      assistiveDeviceOther: "",
+                    })
+                  }
                   label={label}
                 />
               ))}
             </div>
           </fieldset>
+        )}
+
+        {value.educationalSupportType === "technical_aid" && (
+          <>
+            <DevicePicker
+              legend="Technical aid — select the device needed"
+              options={EDUCATION_TECHNICAL_AID_OPTIONS}
+              name="educationTechnicalAid"
+              selectedKey={value.assistiveDeviceType}
+              otherText={value.assistiveDeviceOther}
+              appliedSet={appliedSet}
+              onSelect={(key) => {
+                setDeviceBlockMessage("");
+                patch({
+                  assistiveDeviceType: key,
+                  assistiveDeviceOther: key === "other" ? value.assistiveDeviceOther : "",
+                });
+              }}
+              onOtherText={(text) => patch({ assistiveDeviceOther: text })}
+              onBlocked={onDeviceBlocked}
+            />
+            {deviceBlockMessage ? (
+              <p className="text-sm font-medium text-red-600" role="alert">
+                {deviceBlockMessage}
+              </p>
+            ) : null}
+          </>
         )}
       </div>
     );
@@ -256,9 +450,10 @@ export function SupportPurposeDetails({
           <div className="grid gap-2 sm:grid-cols-2">
             {(
               [
+                ["assistive_device", "Assistive device"],
+                ["medication", "Medication"],
                 ["surgery", "Surgery"],
                 ["therapy", "Therapy"],
-                ["medication", "Medication"],
               ] as const
             ).map(([key, label]) => (
               <RadioRow
@@ -266,156 +461,43 @@ export function SupportPurposeDetails({
                 name="healthNeed"
                 value={key}
                 checked={value.healthNeed === key}
-                onChange={() => patch({ healthNeed: key })}
+                onChange={() =>
+                  patch({
+                    healthNeed: key,
+                    assistiveDeviceType: key === "assistive_device" ? value.assistiveDeviceType : "",
+                    assistiveDeviceOther: key === "assistive_device" ? value.assistiveDeviceOther : "",
+                  })
+                }
                 label={label}
               />
             ))}
           </div>
         </fieldset>
-      </div>
-    );
-  }
-
-  if (categoryCode === "assistive_device") {
-    return (
-      <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-        <SectionTitle n={4} title="Assistive device" />
-        <fieldset className="space-y-2">
-          <legend className="text-xs font-medium text-muted">
-            Type of assistive device applied for (select one for this year)
-          </legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {ASSISTIVE_DEVICE_OPTIONS.map(({ key, label }) => {
-              const alreadyApplied = appliedSet.has(key);
-              if (alreadyApplied) {
-                return (
-                  <label
-                    key={key}
-                    className="flex cursor-not-allowed items-center gap-2 text-sm font-medium text-red-600"
-                    onClick={() => setDeviceBlockMessage("This device has been applied for already.")}
-                  >
-                    <input
-                      type="checkbox"
-                      checked
-                      readOnly
-                      tabIndex={-1}
-                      className="h-4 w-4 cursor-not-allowed accent-red-600"
-                      aria-label={`${label} — already applied`}
-                    />
-                    {label}
-                  </label>
-                );
-              }
-              return (
-                <RadioRow
-                  key={key}
-                  name="assistiveDeviceType"
-                  value={key}
-                  checked={value.assistiveDeviceType === key}
-                  onChange={() => {
-                    setDeviceBlockMessage("");
-                    patch({
-                      assistiveDeviceType: key,
-                      assistiveDeviceOther: key === "other" ? value.assistiveDeviceOther : "",
-                    });
-                  }}
-                  label={label}
-                />
-              );
-            })}
-          </div>
-          {deviceBlockMessage ? (
-            <p className="text-sm font-medium text-red-600" role="alert">
-              {deviceBlockMessage}
-            </p>
-          ) : null}
-        </fieldset>
-        {value.assistiveDeviceType === "other" && (
-          <Field label="Other — specify">
-            <input
-              className={inputClass}
-              value={value.assistiveDeviceOther}
-              onChange={(e) => patch({ assistiveDeviceOther: e.target.value })}
-              placeholder="Describe the device"
-            />
-          </Field>
-        )}
-        <fieldset className="space-y-2 border-t border-slate-200 pt-3">
-          <legend className="text-xs font-medium text-muted">Are you already receiving any form of assistive support?</legend>
-          <div className="flex flex-wrap gap-x-8 gap-y-2">
-            <RadioRow
-              name="alreadyReceivingAssistive"
-              value="yes"
-              checked={value.alreadyReceivingAssistive === "yes"}
-              onChange={() => patch({ alreadyReceivingAssistive: "yes" })}
-              label="Yes"
-            />
-            <RadioRow
-              name="alreadyReceivingAssistive"
-              value="no"
-              checked={value.alreadyReceivingAssistive === "no"}
-              onChange={() =>
+        {value.healthNeed === "assistive_device" && (
+          <>
+            <DevicePicker
+              legend="State the specific device needed (e.g. wheelchair) — cannot request the same device twice"
+              options={HEALTH_ASSISTIVE_DEVICE_OPTIONS}
+              name="healthAssistiveDevice"
+              selectedKey={value.assistiveDeviceType}
+              otherText={value.assistiveDeviceOther}
+              appliedSet={appliedSet}
+              onSelect={(key) => {
+                setDeviceBlockMessage("");
                 patch({
-                  alreadyReceivingAssistive: "no",
-                  existingAssistiveDetail: "",
-                  prescribedWhere: "",
-                })
-              }
-              label="No"
+                  assistiveDeviceType: key,
+                  assistiveDeviceOther: key === "other" ? value.assistiveDeviceOther : "",
+                });
+              }}
+              onOtherText={(text) => patch({ assistiveDeviceOther: text })}
+              onBlocked={onDeviceBlocked}
             />
-          </div>
-        </fieldset>
-        {value.alreadyReceivingAssistive === "yes" && (
-          <div className="grid gap-3 border-l-2 border-slate-200 pl-3 md:grid-cols-2 md:items-start">
-            <Field label="If yes, specify">
-              <input
-                className={inputClass}
-                value={value.existingAssistiveDetail}
-                onChange={(e) => patch({ existingAssistiveDetail: e.target.value })}
-                placeholder="Existing assistive support"
-              />
-            </Field>
-            <Field label="Where was it prescribed?">
-              <input
-                className={inputClass}
-                value={value.prescribedWhere}
-                onChange={(e) => patch({ prescribedWhere: e.target.value })}
-                placeholder="Facility or prescriber"
-              />
-            </Field>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (categoryCode === "caregivers") {
-    return (
-      <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-        <SectionTitle n={5} title="Caregiver" />
-        <fieldset className="space-y-2">
-          <legend className="text-xs font-medium text-muted">Purpose of support</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {CAREGIVER_PURPOSE_OPTIONS.map((label) => (
-              <RadioRow
-                key={label}
-                name="caregiverPurpose"
-                value={label}
-                checked={value.caregiverPurpose === label}
-                onChange={() => patch({ caregiverPurpose: label })}
-                label={label}
-              />
-            ))}
-          </div>
-        </fieldset>
-        {value.caregiverPurpose === "Other" && (
-          <Field label="Specify purpose">
-            <input
-              className={inputClass}
-              value={value.caregiverPurposeOther}
-              onChange={(e) => patch({ caregiverPurposeOther: e.target.value })}
-            />
-          </Field>
+            {deviceBlockMessage ? (
+              <p className="text-sm font-medium text-red-600" role="alert">
+                {deviceBlockMessage}
+              </p>
+            ) : null}
+          </>
         )}
       </div>
     );

@@ -1,5 +1,4 @@
 import { all, db, get, now, run } from "../db/index.ts";
-import { assistiveDeviceRequestForYear } from "./assistive-device-policy.ts";
 import { applicationReference, newId } from "./crypto.ts";
 import type { AuthUser } from "./auth.ts";
 
@@ -186,8 +185,8 @@ export function saveCategoryDetails(applicationId: string, category: string, d: 
   if (category === "education") {
     run("DELETE FROM education_details WHERE application_id = ?", [applicationId]);
     run(
-      `INSERT INTO education_details (application_id, education_mode, education_level, enrolment_status, apprenticeship_type, support_type, school_name, school_type, qualification_pursued, school_account_name, school_account_number, school_bank_name, school_branch)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO education_details (application_id, education_mode, education_level, enrolment_status, apprenticeship_type, support_type, school_name, school_type, qualification_pursued, school_account_name, school_account_number, school_bank_name, school_branch, device_key, device_type, device_other)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         applicationId,
         str(d.educationMode),
@@ -202,6 +201,9 @@ export function saveCategoryDetails(applicationId: string, category: string, d: 
         str(d.schoolAccountNumber),
         str(d.schoolBankName),
         str(d.schoolBranch),
+        str(d.assistiveDeviceKey),
+        str(d.assistiveDeviceType),
+        str(d.deviceOther),
       ],
     );
   } else if (category === "health" || category === "assistive_device") {
@@ -224,11 +226,20 @@ export function saveCategoryDetails(applicationId: string, category: string, d: 
     );
   } else if (category === "income_generating") {
     run("DELETE FROM income_activity_details WHERE application_id = ?", [applicationId]);
-    const subtype = d.subtype === "startup_tool" ? "startup_tool" : "startup_capital";
+    const rawSubtype = String(d.subtype || "startup_capital");
+    const subtype = rawSubtype === "startup_tool" ? "startup_tool" : "startup_capital";
     run(
-      `INSERT INTO income_activity_details (application_id, subtype, business_stage, business_activity, item_specification)
-       VALUES (?,?,?,?,?)`,
-      [applicationId, subtype, str(d.businessStage), str(d.businessActivity), str(d.itemSpecification)],
+      `INSERT INTO income_activity_details (application_id, subtype, business_stage, business_activity, item_specification, device_key, device_type)
+       VALUES (?,?,?,?,?,?,?)`,
+      [
+        applicationId,
+        subtype,
+        str(d.businessStage),
+        str(d.businessActivity),
+        str(d.itemSpecification),
+        subtype === "startup_tool" ? null : str(d.assistiveDeviceKey),
+        subtype === "startup_tool" ? null : str(d.assistiveDeviceType),
+      ],
     );
   } else if (category === "caregivers") {
     run("DELETE FROM caregiver_support_details WHERE application_id = ?", [applicationId]);
@@ -284,29 +295,17 @@ export function createYearlyApplication(opts: {
     );
   }
 
-  if (opts.category === "assistive_device") {
-    const yearTaken = assistiveDeviceRequestForYear(profile.id, year);
-    if (yearTaken) {
-      throw Object.assign(
-        new Error(
-          `This applicant already has an assistive device request for ${year} (${yearTaken.reference}). Only one device request is allowed per year.`,
-        ),
-        { status: 409, details: { applicationId: yearTaken.id, reference: yearTaken.reference } },
-      );
-    }
-  } else {
-    const open = get<{ id: string; reference: string }>(
-      `SELECT id, reference FROM applications
-       WHERE applicant_profile_id = ? AND category_code = ? AND application_year = ?
-         AND status NOT IN ('rejected','cancelled','completed')`,
-      [profile.id, opts.category, year],
+  const open = get<{ id: string; reference: string }>(
+    `SELECT id, reference FROM applications
+     WHERE applicant_profile_id = ? AND category_code = ? AND application_year = ?
+       AND status NOT IN ('rejected','cancelled','completed')`,
+    [profile.id, opts.category, year],
+  );
+  if (open) {
+    throw Object.assign(
+      new Error(`An open ${opts.category} request for ${year} already exists (${open.reference})`),
+      { status: 409, details: { applicationId: open.id, reference: open.reference } },
     );
-    if (open) {
-      throw Object.assign(
-        new Error(`An open ${opts.category} request for ${year} already exists (${open.reference})`),
-        { status: 409, details: { applicationId: open.id, reference: open.reference } },
-      );
-    }
   }
 
   const cat = get("SELECT code FROM support_categories WHERE code = ? AND is_active = 1", [opts.category]);

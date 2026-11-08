@@ -21,6 +21,7 @@ import {
   APPLICATION_PURPOSE_CATEGORY_ORDER,
   EMPTY_PURPOSE_FORM,
   applicationPurposePrintRows,
+  assistiveDeviceKeyFromPurposeForm,
   assistiveDeviceKeysFromHistory,
   buildDetailsFromPurposeForm,
   buildPurposeSummaryFromForm,
@@ -39,6 +40,7 @@ import {
 import { MedicalSupportDocumentField } from "../components/MedicalSupportDocumentField";
 import { RegistrationIntakeSummary } from "../components/RegistrationIntakeSummary";
 import { mergeApplicationSubmitDetails } from "../lib/applicationSubmitDetails";
+import { isStartupToolPreviouslyRequested, type StartupToolHistoryRow } from "../lib/startupToolPolicy";
 import {
   EDUCATION_SCHOOL_ACCOUNT_MESSAGE,
   EDUCATION_SCHOOL_NAME_MESSAGE,
@@ -121,6 +123,8 @@ type AssistiveDeviceHistory = {
   assistive_device_type: string | null;
 };
 
+type StartupToolHistory = StartupToolHistoryRow & { status?: string; created_at?: string };
+
 type ApplicantDetail = {
   id: string;
   applicant_ref: string;
@@ -146,6 +150,7 @@ type ApplicantDetail = {
   registered_by_name: string | null;
   applications: AppHistory[];
   assistive_device_history?: AssistiveDeviceHistory[];
+  startup_tool_history?: StartupToolHistory[];
   registrationSupportIntake?: RegistrationSupportIntake | null;
   caregivers?: {
     full_name: string;
@@ -366,11 +371,7 @@ export function ApplicationNewPage() {
   }, [applicantProfileId, lookups?.disabilities, navigate]);
 
   const assistiveDeviceHistory = dossier?.assistive_device_history ?? [];
-
-  const assistiveRequestThisYear = useMemo(
-    () => assistiveDeviceHistory.find((h) => h.application_year === CURRENT_APPLICATION_YEAR) ?? null,
-    [assistiveDeviceHistory],
-  );
+  const startupToolHistory = dossier?.startup_tool_history ?? [];
 
   const previouslyAppliedDeviceKeys = useMemo(
     () => assistiveDeviceKeysFromHistory(assistiveDeviceHistory),
@@ -417,18 +418,20 @@ export function ApplicationNewPage() {
     if (disabilityUseSpecify && !disabilitySpecifyText.trim()) {
       err.disabilitySpecify = "Specify the type of disability under Schedule B, or use the registration record.";
     }
-    if (category === "assistive_device" && assistiveRequestThisYear) {
-      setError(
-        `This applicant already has an assistive device request for ${CURRENT_APPLICATION_YEAR} (${assistiveRequestThisYear.reference}). Only one device request is allowed per year.`,
-      );
+    const requestedDeviceKey = assistiveDeviceKeyFromPurposeForm(category, purposeForm);
+    if (
+      requestedDeviceKey &&
+      previouslyAppliedDeviceKeys.includes(requestedDeviceKey as AssistiveDeviceKey)
+    ) {
+      setError("This device has been requested before and cannot be applied for again.");
       return;
     }
     if (
-      category === "assistive_device" &&
-      purposeForm.assistiveDeviceType &&
-      previouslyAppliedDeviceKeys.includes(purposeForm.assistiveDeviceType as AssistiveDeviceKey)
+      category === "income_generating" &&
+      purposeForm.incomeSupportType === "startup_tool" &&
+      isStartupToolPreviouslyRequested(purposeForm.itemSpecification, startupToolHistory)
     ) {
-      setError("This device has been applied for already.");
+      setError("This start-up tool has been requested before and cannot be applied for again.");
       return;
     }
     if (!registeredIntake) {
@@ -1096,6 +1099,7 @@ export function ApplicationNewPage() {
                         });
                       }}
                       previouslyAppliedDeviceKeys={previouslyAppliedDeviceKeys}
+                      startupToolHistory={startupToolHistory}
                     />
                     <FormFieldError message={fieldErrors.purpose} />
                   </div>
@@ -1213,7 +1217,7 @@ export function ApplicationNewPage() {
           <div className="no-print mt-8 flex flex-wrap gap-2 rounded-2xl bg-surface px-4 py-4 shadow-sm sm:gap-3 sm:px-6 sm:py-5">
             <Button
               compact
-              disabled={busy || (category === "assistive_device" && Boolean(assistiveRequestThisYear))}
+              disabled={busy}
             >
               {busy ? "Saving…" : "Save"}
             </Button>
@@ -1231,6 +1235,7 @@ export function ApplicationNewPage() {
             title="Applicant support history"
             rows={dossier.applications ?? []}
             assistiveDeviceHistory={assistiveDeviceHistory}
+            startupToolHistory={startupToolHistory}
             emptyMessage="No previous yearly requests on file for this applicant."
           />
         </div>

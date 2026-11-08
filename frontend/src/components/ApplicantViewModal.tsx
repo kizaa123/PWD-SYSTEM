@@ -50,6 +50,13 @@ type AssistiveDeviceHistory = {
   assistive_device_type: string | null;
 };
 
+type StartupToolHistory = {
+  id: string;
+  reference: string;
+  application_year: number;
+  tool_name: string;
+};
+
 type CaregiverRow = {
   full_name: string;
   phone: string | null;
@@ -111,6 +118,7 @@ type Applicant = {
   caregivers: CaregiverRow[];
   applications: ApplicationSummary[];
   assistive_device_history?: AssistiveDeviceHistory[];
+  startup_tool_history?: StartupToolHistory[];
   registrationSupportIntake?: RegistrationSupportIntake | null;
 };
 
@@ -523,6 +531,7 @@ export function ApplicantViewModal({
                 className="border-t border-slate-200 pt-8"
                 rows={applicant.applications ?? []}
                 assistiveDeviceHistory={applicant.assistive_device_history}
+                startupToolHistory={applicant.startup_tool_history}
               />
             </>
           )}

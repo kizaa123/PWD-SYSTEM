@@ -4,10 +4,8 @@ import path from "node:path";
 import multer from "multer";
 import { all, db, get, now, run } from "../db/index.ts";
 import { COVERAGE_DISTRICT_CODE } from "../db/policy.ts";
-import {
-  validateAssistiveDeviceDetails,
-  validateAssistiveDeviceNotPreviouslyApplied,
-} from "../lib/assistive-device-policy.ts";
+import { validateDeviceRequestInDetails } from "../lib/assistive-device-policy.ts";
+import { validateStartupToolDetails } from "../lib/startup-tool-policy.ts";
 import {
   applicantProfileIdsAppliedForYear,
   clearCategoryDetails,
@@ -237,13 +235,12 @@ applicationRouter.post("/", requirePermission("applications.create"), (req, res)
     return res.status(400).json({ error: "Select one support category" });
   }
   const year = b.applicationYear != null ? Number(b.applicationYear) : currentApplicationYear();
-  if (category === "assistive_device") {
+  {
     const details = (b.details || {}) as Record<string, unknown>;
-    const detailErr = validateAssistiveDeviceDetails(details);
-    if (detailErr) return res.status(400).json({ error: detailErr });
-    const key = String(details.assistiveDeviceKey || "");
-    const repeatErr = validateAssistiveDeviceNotPreviouslyApplied(profile.id, key);
-    if (repeatErr) return res.status(400).json({ error: repeatErr });
+    const deviceErr = validateDeviceRequestInDetails(profile.id, details);
+    if (deviceErr) return res.status(400).json({ error: deviceErr });
+    const toolErr = validateStartupToolDetails(profile.id, category, details);
+    if (toolErr) return res.status(400).json({ error: toolErr });
   }
   try {
     const created = createYearlyApplication({
@@ -300,13 +297,12 @@ applicationRouter.patch("/:id", requirePermission("applications.create", "profil
     clearCategoryDetails(app.id, app.category_code);
   }
 
-  if (category === "assistive_device") {
+  {
     const details = (b.details || {}) as Record<string, unknown>;
-    const detailErr = validateAssistiveDeviceDetails(details);
-    if (detailErr) return res.status(400).json({ error: detailErr });
-    const key = String(details.assistiveDeviceKey || "");
-    const repeatErr = validateAssistiveDeviceNotPreviouslyApplied(app.applicant_profile_id, key, app.id);
-    if (repeatErr) return res.status(400).json({ error: repeatErr });
+    const deviceErr = validateDeviceRequestInDetails(app.applicant_profile_id, details, app.id);
+    if (deviceErr) return res.status(400).json({ error: deviceErr });
+    const toolErr = validateStartupToolDetails(app.applicant_profile_id, category, details, app.id);
+    if (toolErr) return res.status(400).json({ error: toolErr });
   }
 
   run(

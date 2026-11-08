@@ -16,9 +16,17 @@ export type AssistiveDeviceHistoryRow = {
   assistive_device_type: string | null;
 };
 
+export type StartupToolHistoryRow = {
+  id: string;
+  reference: string;
+  application_year: number;
+  tool_name: string;
+};
+
 type Props = {
   rows: ApplicantSupportHistoryRow[];
   assistiveDeviceHistory?: AssistiveDeviceHistoryRow[];
+  startupToolHistory?: StartupToolHistoryRow[];
   title?: string;
   emptyMessage?: string;
   className?: string;
@@ -43,6 +51,7 @@ function OutcomeBadge({ status, officeUseQualified }: { status: string; officeUs
 export function ApplicantSupportHistoryTable({
   rows,
   assistiveDeviceHistory = [],
+  startupToolHistory = [],
   title = "Yearly support application history",
   emptyMessage = "No previous yearly support requests on file for this applicant.",
   className = "",
@@ -50,7 +59,9 @@ export function ApplicantSupportHistoryTable({
   const displayRows = filterApplicantSupportHistoryForDisplay(rows);
   const visibleRefs = new Set(displayRows.map((r) => r.reference));
   const deviceRows = assistiveDeviceHistory.filter((h) => visibleRefs.has(h.reference));
+  const toolRows = startupToolHistory.filter((h) => visibleRefs.has(h.reference));
   const hasDevices = deviceRows.length > 0;
+  const hasTools = toolRows.length > 0;
 
   return (
     <section className={`applicant-support-history ${className}`.trim()}>
@@ -104,6 +115,21 @@ export function ApplicantSupportHistoryTable({
           </table>
         </div>
       )}
+
+      {hasTools ? (
+        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/90 px-4 py-3">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-600">Start-up tools requested</p>
+          <ul className="space-y-1.5 text-sm text-navy">
+            {toolRows.map((h) => (
+              <li key={h.id} className="flex flex-wrap gap-x-2 gap-y-0.5">
+                <span className="font-semibold text-slate-700">{h.application_year}</span>
+                <span>{h.tool_name}</span>
+                <span className="text-slate-500">({h.reference})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {hasDevices ? (
         <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/90 px-4 py-3">

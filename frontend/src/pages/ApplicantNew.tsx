@@ -574,6 +574,9 @@ export function ApplicantNewPage() {
                     placeholder="House number, landmark, or street"
                   />
                 </div>
+              </div>
+
+              <div className="sm:col-span-2 grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-navy">Type of Residence</label>
                   <select
@@ -596,15 +599,14 @@ export function ApplicantNewPage() {
                     />
                   )}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-navy mb-1">Level of education</label>
-                <EducationLevelTextInput
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-navy outline-none focus:border-teal focus:ring-1 focus:ring-teal"
-                  value={form.caregiverEducationLevel}
-                  onChange={(v) => set("caregiverEducationLevel", v)}
-                />
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-navy">Level of education</label>
+                  <EducationLevelTextInput
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-navy outline-none focus:border-teal focus:ring-1 focus:ring-teal"
+                    value={form.caregiverEducationLevel}
+                    onChange={(v) => set("caregiverEducationLevel", v)}
+                  />
+                </div>
               </div>
 
               <div className="sm:col-span-2 grid gap-4 sm:grid-cols-2">

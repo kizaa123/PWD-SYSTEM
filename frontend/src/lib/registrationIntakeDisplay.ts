@@ -2,9 +2,10 @@ import type { RegistrationSupportIntake } from "./registrationIntake";
 import { ASSISTIVE_DEVICE_OPTIONS, type FormalLevel, type HealthNeed, type PurposeFormState } from "./supportPurposeOptions";
 
 const HEALTH_NEED_LABEL: Record<HealthNeed, string> = {
+  assistive_device: "Assistive device",
+  medication: "Medication",
   surgery: "Surgery",
   therapy: "Therapy",
-  medication: "Medication",
 };
 
 export type IntakeDisplayRow = { label: string; value: string };
@@ -90,9 +91,10 @@ export function registrationIntakeDisplayRows(intake: RegistrationSupportIntake)
     pushUnique(rows, "Economic activity", fromLines.get("activity") || pf.economicActivity);
     if (pf.incomeSupportType === "startup_tool") {
       pushUnique(rows, "Support form", "Start-up tool");
-      pushUnique(rows, "Item", pf.itemSpecification);
+      pushUnique(rows, "Start-up tool", pf.itemSpecification?.trim());
     } else if (pf.incomeSupportType === "startup_capital") {
-      pushUnique(rows, "Support form", "Start-up capital");
+      pushUnique(rows, "Support form", "Capital");
+      pushUnique(rows, "Capital use", pf.itemSpecification);
     }
   }
 
@@ -101,6 +103,13 @@ export function registrationIntakeDisplayRows(intake: RegistrationSupportIntake)
       fromLines.get("health") ||
       (pf.healthNeed ? HEALTH_NEED_LABEL[pf.healthNeed as HealthNeed] : "");
     pushUnique(rows, "Health need", health);
+    if (pf.healthNeed === "assistive_device") {
+      pushUnique(
+        rows,
+        "Specific device",
+        ASSISTIVE_DEVICE_OPTIONS.find((o) => o.key === pf.assistiveDeviceType)?.label || pf.assistiveDeviceOther,
+      );
+    }
   }
 
   if (effectiveType === "assistive_device" || intake.categoryCode === "assistive_device") {
