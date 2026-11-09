@@ -110,6 +110,7 @@ export function ApplicationViewModal({ applicationId, onClose }: Props) {
               application={application}
               disabilities={disabilities}
               hideInlinePassportPhotos
+              hideApplicantSignature
             />
           )}
         </div>

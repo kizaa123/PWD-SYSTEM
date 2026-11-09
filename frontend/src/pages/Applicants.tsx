@@ -6,6 +6,7 @@ import { Button, ReferenceNumber, inputClass } from "../components/StatusBadge";
 import { PageTitle } from "../components/PageTitle";
 import { ApplicantViewModal } from "../components/ApplicantViewModal";
 import { useAuth } from "../lib/auth";
+import { formatAppDateFromIso } from "../lib/dateFormat";
 import {
   registrationListDisabilityLabel,
   registrationListPrimaryCommunity,
@@ -18,6 +19,7 @@ import {
 type Row = RegistrationListRow & {
   id: string;
   applicant_ref: string;
+  created_at: string;
   registration_source: string;
   registered_by_name: string | null;
 };
@@ -85,6 +87,7 @@ export function ApplicantsPage() {
                 <span className="hidden sm:inline">Full name</span>
               </th>
               <th>Reference</th>
+              <th className="table-cell-nowrap-sm">Reg. date</th>
               <th>Phone</th>
               <th>Type</th>
               <th>Community</th>
@@ -102,19 +105,19 @@ export function ApplicantsPage() {
               <tr key={r.id} className="border-t border-canvas">
                 <td>
                   <button type="button" className="text-left hover:text-teal" onClick={() => setViewId(r.id)}>
-                    <span className="font-semibold text-navy sm:hidden">{registrationListPrimaryName(r)}</span>
-                    <span className="hidden sm:block text-left">
-                      <span className="block font-semibold text-navy">{registrationListPrimaryName(r)}</span>
-                      {r.registration_type === "caregiver" && r.full_name?.trim() ? (
-                        <span className="mt-0.5 block text-xs font-normal text-muted">
-                          Beneficiary: {r.full_name.trim()}
-                        </span>
-                      ) : null}
-                    </span>
+                    <span className="block font-semibold text-navy">{registrationListPrimaryName(r)}</span>
+                    {r.registration_type === "caregiver" && r.full_name?.trim() ? (
+                      <span className="mt-0.5 block text-xs font-normal text-muted">
+                        Beneficiary: {r.full_name.trim()}
+                      </span>
+                    ) : null}
                   </button>
                 </td>
                 <td>
                   <ReferenceNumber>{r.applicant_ref}</ReferenceNumber>
+                </td>
+                <td className="whitespace-nowrap text-xs sm:text-sm">
+                  {formatAppDateFromIso(r.created_at) || "—"}
                 </td>
                 <td>{registrationListPrimaryPhone(r)}</td>
                 <td className="text-xs font-semibold uppercase text-teal">

@@ -207,6 +207,7 @@ export function validatePurposeForm(categoryCode: string, form: PurposeFormState
         }
       } else {
         if (!form.apprenticeshipType) return "Select Vocational or Technical apprenticeship.";
+        return null;
       }
       if (!form.educationalSupportType) return "Select the type of educational support.";
       if (form.educationalSupportType === "technical_aid") {
@@ -284,7 +285,9 @@ export function buildDetailsFromPurposeForm(categoryCode: string, form: PurposeF
           : null,
         qualificationPursued:
           form.formalLevel === "tertiary" ? form.qualificationPursued.trim() || null : null,
-        supportType: EDUCATIONAL_SUPPORT_LABEL[form.educationalSupportType as EducationalSupportType],
+        supportType: isApprenticeship
+          ? null
+          : EDUCATIONAL_SUPPORT_LABEL[form.educationalSupportType as EducationalSupportType],
         schoolName: form.schoolName.trim() || null,
         schoolAccountNumber: form.schoolAccountNumber.trim() || null,
         assistiveDeviceKey:

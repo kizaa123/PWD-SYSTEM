@@ -1,4 +1,4 @@
-import { CATEGORY_LABELS, pesewasToGhs } from "../lib/api";
+import { CATEGORY_LABELS } from "../lib/api";
 
 export type YearCategorySlice = {
   category_code: string;
@@ -66,7 +66,6 @@ export function CategoryPieChart({ slices }: { slices: YearCategorySlice[] }) {
                       <span className="font-semibold text-navy">{s.applicants}</span> applicant{s.applicants === 1 ? "" : "s"}
                     </span>
                     <span>{Math.round(s.pct)}% of total</span>
-                    <span>{pesewasToGhs(s.requested_pesewas)} requested</span>
                   </div>
                 </div>
               </li>
@@ -79,26 +78,24 @@ export function CategoryPieChart({ slices }: { slices: YearCategorySlice[] }) {
 }
 
 export function SupportRequestHistogram({ bars }: { bars: YearSupportBar[] }) {
-  const max = Math.max(...bars.map((b) => b.requested_pesewas), 1);
+  const max = Math.max(...bars.map((b) => b.applications), 1);
   const top = bars.slice(0, 12);
 
   return (
     <section className="rounded-2xl bg-surface p-4 shadow-sm sm:p-5">
-      <h3 className="text-sm font-semibold text-navy">Requested support breakdown</h3>
-      <p className="mt-0.5 text-xs text-muted">Total amounts requested by purpose (school fees, surgery, tools, etc.) this year.</p>
+      <h3 className="text-sm font-semibold text-navy">Support purpose breakdown</h3>
+      <p className="mt-0.5 text-xs text-muted">Number of applicants by support purpose this year.</p>
       {top.length === 0 ? (
         <p className="mt-8 text-center text-sm text-muted">No support purpose details for this year yet.</p>
       ) : (
         <ul className="mt-6 space-y-4">
           {top.map((bar) => {
-            const widthPct = Math.max(4, Math.round((bar.requested_pesewas / max) * 100));
+            const widthPct = Math.max(4, Math.round((bar.applications / max) * 100));
             return (
               <li key={bar.label}>
                 <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2 text-sm">
                   <span className="font-medium text-navy">{bar.label}</span>
-                  <span className="text-xs text-muted">
-                    {pesewasToGhs(bar.requested_pesewas)}
-                    <span className="mx-1">·</span>
+                  <span className="text-xs font-semibold text-muted">
                     {bar.applications} applicant{bar.applications === 1 ? "" : "s"}
                   </span>
                 </div>
@@ -124,14 +121,12 @@ export function YearStatCards({
   registered,
   applied,
   notApplied,
-  totalRequestedPesewas,
 }: {
   year?: number;
   yearLabel?: string;
   registered: number;
   applied: number;
   notApplied: number;
-  totalRequestedPesewas: number;
 }) {
   const period = yearLabel ?? (year != null ? String(year) : "this period");
   const cards = [
@@ -155,24 +150,15 @@ export function YearStatCards({
         : `Registered in ${period} without a support request yet`,
       tone: "text-warning",
     },
-    {
-      label: "Total requested",
-      value: pesewasToGhs(totalRequestedPesewas),
-      hint: `Sum of amounts requested (${period})`,
-      tone: "text-info",
-      isMoney: true,
-    },
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {cards.map((card) => (
         <div key={card.label} className="rounded-2xl border border-slate-100 bg-surface p-4 shadow-sm sm:p-5">
           <div className="text-xs font-semibold uppercase tracking-wide text-muted">{card.label}</div>
-          <div
-            className={`mt-2 font-bold tracking-tight text-navy ${card.isMoney ? "text-2xl" : "text-3xl"} ${card.tone}`}
-          >
-            {typeof card.value === "number" ? card.value.toLocaleString() : card.value}
+          <div className={`mt-2 text-3xl font-bold tracking-tight text-navy ${card.tone}`}>
+            {card.value.toLocaleString()}
           </div>
           <p className="mt-2 text-xs leading-relaxed text-muted">{card.hint}</p>
         </div>

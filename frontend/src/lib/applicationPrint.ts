@@ -2,7 +2,7 @@ import type { ApplicationPrintSnapshot } from "../components/ApplicationPrintShe
 import type { RecordApplicant, RecordApplication } from "../components/ApplicationRecordView";
 import { applicationDeclarationSentence } from "./applicationDeclaration";
 import { applicationDocumentTypeLabel, supportingApplicationDocuments } from "./applicationDocuments";
-import { applicationSupportRequestRows } from "./applicationSupportDisplay";
+import { applicationSupportRequestRows, applicationSupportTypeColumnLabel } from "./applicationSupportDisplay";
 import { formatResidenceType, formatSex } from "./applicantUtils";
 import { disabilityFromRegistration } from "./disabilityScheduleB";
 import { formatAppDate, formatAppDateFromIso } from "./dateFormat";
@@ -24,13 +24,12 @@ export function buildApplicationPrintSnapshot(
     disabilities,
   ).display;
   const openedAt = formatAppDateFromIso(application.created_at) || "—";
-  const amount =
-    application.amount_requested_pesewas != null
-      ? (application.amount_requested_pesewas / 100).toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })
-      : "—";
+  const supportTypeLabel = applicationSupportTypeColumnLabel(
+    application.category_code,
+    application.category_name,
+    application.purpose_summary,
+    application.details,
+  );
   const supportRows = applicationSupportRequestRows(
     application.category_code,
     application.category_name,
@@ -39,7 +38,7 @@ export function buildApplicationPrintSnapshot(
   );
   const purposeRows = [
     ...supportRows.map((r) => ({ label: r.label, value: r.value })),
-    { label: "Total amount requested (Gh₵)", value: amount === "—" ? "—" : amount },
+    { label: "Type of support", value: supportTypeLabel },
   ];
   const docs = supportingApplicationDocuments(application.documents);
   for (const d of docs) {

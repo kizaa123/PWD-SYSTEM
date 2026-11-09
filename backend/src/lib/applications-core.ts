@@ -126,6 +126,7 @@ export type CurrentYearApplicationSummary = {
   category_code: string;
   category_name: string;
   amount_requested_pesewas: number | null;
+  purpose_summary: string | null;
   created_at: string;
   application_year: number;
   office_use_qualified: string | null;
@@ -136,7 +137,7 @@ export function currentYearApplicationsByProfile(year: number): Map<string, Curr
   type Row = CurrentYearApplicationSummary & { applicant_profile_id: string };
   const rows = all<Row>(
     `SELECT a.id, a.applicant_profile_id, a.reference, a.status, a.category_code, sc.name AS category_name,
-            a.amount_requested_pesewas, a.created_at, a.application_year, a.office_use_qualified
+            a.amount_requested_pesewas, a.purpose_summary, a.created_at, a.application_year, a.office_use_qualified
      FROM applications a
      JOIN support_categories sc ON sc.code = a.category_code
      WHERE a.application_year = ?
@@ -154,6 +155,7 @@ export function currentYearApplicationsByProfile(year: number): Map<string, Curr
       category_code: row.category_code,
       category_name: row.category_name,
       amount_requested_pesewas: row.amount_requested_pesewas,
+      purpose_summary: (row.purpose_summary as string | null) ?? null,
       created_at: row.created_at,
       application_year: row.application_year,
       office_use_qualified: (row.office_use_qualified as string | null) ?? null,

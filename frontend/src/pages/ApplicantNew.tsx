@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApplicantViewModal } from "../components/ApplicantViewModal";
 import { GhanaCardInput } from "../components/GhanaCardInput";
@@ -15,12 +15,14 @@ import {
 } from "../lib/offlineDb";
 import { notifyRegistrationQueueChanged } from "../lib/registrationSync";
 import { api, uploadApplicantPassportPhoto } from "../lib/api";
-import { EducationLevelSelect, EducationLevelTextInput } from "../components/EducationLevelSelect";
+import { EducationLevelSelect } from "../components/EducationLevelSelect";
+import { educationLevelForSubmit } from "../lib/educationLevels";
 import { FormFieldError, fieldErrorBorder } from "../components/FormFieldError";
 import { ghanaCardValidationError } from "../lib/ghanaCardFormat";
 import { nhisValidationError } from "../lib/nhisFormat";
 import { phoneValidationError } from "../lib/ghanaPhoneFormat";
 import { useAuth } from "../lib/auth";
+import { formatAppDate } from "../lib/dateFormat";
 
 type Lookups = {
   regions: { id: string; name: string }[];
@@ -80,6 +82,7 @@ const emptyForm = {
   caregiverAge: "",
   caregiverSex: "female",
   caregiverEducationLevel: "",
+  caregiverEducationLevelOther: "",
   caregiverHomeAddress: "",
   caregiverCommunityName: "",
   caregiverPhone: "",
@@ -111,6 +114,7 @@ export function ApplicantNewPage() {
   const [lookups, setLookups] = useState<Lookups | null>(null);
   const [lookupsReady, setLookupsReady] = useState(false);
   const [regType, setRegType] = useState<RegType>("caregiver");
+  const registrationDateLabel = useMemo(() => formatAppDate(new Date()), []);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
@@ -474,6 +478,11 @@ export function ApplicantNewPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2 text-sm text-navy">
+                <span className="font-medium">Registration date</span>
+                <span className="text-muted"> · </span>
+                <span>{registrationDateLabel}</span>
+              </div>
               <div className="sm:col-span-2" id="reg-field-caregiverName">
                 <label className="block text-sm font-medium text-navy mb-1">
                   Full Name of Caregiver <span className="text-red-500">*</span>
@@ -601,10 +610,12 @@ export function ApplicantNewPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-navy">Level of education</label>
-                  <EducationLevelTextInput
+                  <EducationLevelSelect
                     className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-navy outline-none focus:border-teal focus:ring-1 focus:ring-teal"
                     value={form.caregiverEducationLevel}
+                    otherValue={form.caregiverEducationLevelOther}
                     onChange={(v) => set("caregiverEducationLevel", v)}
+                    onOtherChange={(v) => set("caregiverEducationLevelOther", v)}
                   />
                 </div>
               </div>
@@ -722,6 +733,13 @@ export function ApplicantNewPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
+            {regType === "pwd" ? (
+              <div className="sm:col-span-2 text-sm text-navy">
+                <span className="font-medium">Registration date</span>
+                <span className="text-muted"> · </span>
+                <span>{registrationDateLabel}</span>
+              </div>
+            ) : null}
             <div className="sm:col-span-2" id="reg-field-fullName">
               <label className="block text-sm font-medium text-navy mb-1">
                 Full Legal Name <span className="text-red-500">*</span>

@@ -1,7 +1,7 @@
 import { ApplicationDocumentActions } from "./ApplicationDocumentActions";
 import { applicationDeclarationParts } from "../lib/applicationDeclaration";
 import { supportingApplicationDocuments } from "../lib/applicationDocuments";
-import { applicationSupportRequestRows } from "../lib/applicationSupportDisplay";
+import { applicationSupportRequestRows, applicationSupportTypeColumnLabel } from "../lib/applicationSupportDisplay";
 import { formatResidenceType, formatSex } from "../lib/applicantUtils";
 import { disabilityFromRegistration } from "../lib/disabilityScheduleB";
 import { formatAppDateTimeFromIso } from "../lib/dateFormat";
@@ -99,6 +99,8 @@ type Props = {
   disabilities?: string[];
   /** Modal header already shows the passport — hide inline copies in the body. */
   hideInlinePassportPhotos?: boolean;
+  /** Hide applicant signature/thumbprint on screen; still shown on print sheets. */
+  hideApplicantSignature?: boolean;
 };
 
 export function ApplicationRecordView({
@@ -106,6 +108,7 @@ export function ApplicationRecordView({
   application,
   disabilities = [],
   hideInlinePassportPhotos = false,
+  hideApplicantSignature = false,
 }: Props) {
   const isCaregiverReg = applicant.registration_type === "caregiver";
   const caregiver = applicant.caregivers?.[0];
@@ -123,13 +126,12 @@ export function ApplicationRecordView({
     disabilities,
   );
   const openedAt = formatAppDateTimeFromIso(application.created_at) || "—";
-  const amount =
-    application.amount_requested_pesewas != null
-      ? (application.amount_requested_pesewas / 100).toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })
-      : "—";
+  const supportTypeLabel = applicationSupportTypeColumnLabel(
+    application.category_code,
+    application.category_name,
+    application.purpose_summary,
+    application.details,
+  );
   const supportRows = applicationSupportRequestRows(
     application.category_code,
     application.category_name,
@@ -313,7 +315,7 @@ export function ApplicationRecordView({
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
-          <DetailLine label="Total amount requested" value={amount === "—" ? "—" : `Gh₵ ${amount}`} />
+          <DetailLine label="Type of support" value={supportTypeLabel} />
           {showEducationSchool && schoolName ? <DetailLine label="School name" value={schoolName} /> : null}
           {showEducationSchool && schoolAccount ? (
             <DetailLine label="School account No." value={schoolAccount} />
@@ -323,7 +325,9 @@ export function ApplicationRecordView({
         <ApplicationDocumentActions documents={supportingDocs} />
 
         <div className="space-y-4 border-t border-canvas pt-6">
-          <DetailLine label="Signature / Thumbprint (applicant)" value={applicantSignOrThumb} />
+          {!hideApplicantSignature ? (
+            <DetailLine label="Signature / Thumbprint (applicant)" value={applicantSignOrThumb} />
+          ) : null}
           <DetailLine label="Endorsed by (application)" value={applicationEndorsedBy} />
         </div>
       </div>

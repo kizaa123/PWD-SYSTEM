@@ -100,17 +100,16 @@ export function downloadYearReportCsv(
   lines.push(csvRow(["Registered", stats.registered]));
   lines.push(csvRow(["Applied", stats.applied]));
   lines.push(csvRow(["Not applied", stats.notApplied]));
-  lines.push(csvRow(["Total amount requested", pesewasToGhs(stats.totalRequestedPesewas)]));
   lines.push("");
-  lines.push(csvRow(["Category", "Applicants", "Requested"]));
+  lines.push(csvRow(["Category", "Applicants"]));
   for (const c of stats.byCategory) {
     const label = CATEGORY_LABELS[c.category_code] || c.category_name || c.category_code;
-    lines.push(csvRow([label, c.applicants, pesewasToGhs(c.requested_pesewas)]));
+    lines.push(csvRow([label, c.applicants]));
   }
   lines.push("");
-  lines.push(csvRow(["Purpose", "Applications", "Requested"]));
+  lines.push(csvRow(["Purpose", "Applications"]));
   for (const b of stats.supportBreakdown) {
-    lines.push(csvRow([b.label, b.applications, pesewasToGhs(b.requested_pesewas)]));
+    lines.push(csvRow([b.label, b.applications]));
   }
 
   lines.push("");

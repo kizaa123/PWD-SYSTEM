@@ -40,6 +40,7 @@ import {
 import { MedicalSupportDocumentField } from "../components/MedicalSupportDocumentField";
 import { RegistrationIntakeSummary } from "../components/RegistrationIntakeSummary";
 import { mergeApplicationSubmitDetails } from "../lib/applicationSubmitDetails";
+import { applicationSupportTypeColumnLabel } from "../lib/applicationSupportDisplay";
 import { isStartupToolPreviouslyRequested, type StartupToolHistoryRow } from "../lib/startupToolPolicy";
 import {
   EDUCATION_SCHOOL_ACCOUNT_MESSAGE,
@@ -216,7 +217,6 @@ export function ApplicationNewPage() {
   const [category, setCategory] = useState("");
   const [purposeForm, setPurposeForm] = useState<PurposeFormState>({ ...EMPTY_PURPOSE_FORM });
   const [purpose, setPurpose] = useState("");
-  const [amountRequested, setAmountRequested] = useState("");
   const [declaration, setDeclaration] = useState<DeclarationState>({ ...EMPTY_DECLARATION });
   const [medicalSupportFile, setMedicalSupportFile] = useState<File | null>(null);
   const [schoolLetterFile, setSchoolLetterFile] = useState<File | null>(null);
@@ -386,8 +386,18 @@ export function ApplicationNewPage() {
   );
 
   const requiresEducationSchool = useMemo(
-    () => applicationRequiresEducationSchoolDetails(effectiveCategory, registeredIntake),
-    [effectiveCategory, registeredIntake, category],
+    () =>
+      applicationRequiresEducationSchoolDetails(effectiveCategory, registeredIntake, {
+        educationTrack: purposeForm.educationTrack,
+        educationalSupportType: purposeForm.educationalSupportType,
+      }),
+    [
+      effectiveCategory,
+      registeredIntake,
+      category,
+      purposeForm.educationTrack,
+      purposeForm.educationalSupportType,
+    ],
   );
 
   useEffect(() => {
@@ -446,10 +456,6 @@ export function ApplicationNewPage() {
       if (!purposeForm.schoolName.trim()) err.schoolName = EDUCATION_SCHOOL_NAME_MESSAGE;
       if (!purposeForm.schoolAccountNumber.trim()) err.schoolAccountNumber = EDUCATION_SCHOOL_ACCOUNT_MESSAGE;
     }
-    const amountNum = Number(amountRequested);
-    if (!amountRequested.trim() || Number.isNaN(amountNum) || amountNum < 0) {
-      err.amountRequested = "Enter the total amount requested in Ghana cedis (Gh₵).";
-    }
     if (!declaration.signatureMode) err.signatureMode = "Select Signature or Thumbprint.";
     if (requiresMedicalDocument && !medicalSupportFile) {
       err.medicalDocument = MEDICAL_DOCUMENT_VALIDATION_MESSAGE;
@@ -491,7 +497,7 @@ export function ApplicationNewPage() {
     const purposeSummary = notes ? `${autoSummary} — ${notes}` : autoSummary;
     const requestBody = {
       categoryCode: submitCategory,
-      amountRequested: amountNum,
+      amountRequested: null,
       purposeSummary,
       applicantSignatureLabel: declaration.signatureMode === "thumbprint" ? "Thumbprint" : "Signature",
       endorsingOfficerName: applicationEndorsedByName === "—" ? null : applicationEndorsedByName,
@@ -593,9 +599,15 @@ export function ApplicationNewPage() {
           ...applicationPurposePrintRows(category, purposeForm),
         ];
     if (purpose.trim()) purposeRows.push({ label: "Additional notes", value: purpose.trim() });
+    const summarySeed = registeredIntake?.purposeSummarySeed ?? buildPurposeSummaryFromForm(category, categoryLabel, purposeForm);
     purposeRows.push({
-      label: "Total amount requested (Gh₵)",
-      value: amountRequested.trim() ? amountRequested.trim() : "—",
+      label: "Type of support",
+      value: applicationSupportTypeColumnLabel(
+        category,
+        categoryLabel,
+        summarySeed,
+        registeredIntake ? undefined : buildDetailsFromPurposeForm(category, purposeForm),
+      ),
     });
     if (requiresMedicalDocument) {
       purposeRows.push({
@@ -771,7 +783,6 @@ export function ApplicationNewPage() {
     form.opdName,
     purposeForm,
     purpose,
-    amountRequested,
     medicalSupportFile,
     registeredIntake,
     requiresMedicalDocument,
@@ -1150,35 +1161,9 @@ export function ApplicationNewPage() {
                   />
                 </div>
               ) : null}
-              <div className="grid gap-3 md:grid-cols-2 md:items-start">
-                <Field label="Additional notes (optional)">
-                  <textarea className={inputClass} rows={2} value={purpose} onChange={(e) => setPurpose(e.target.value)} />
-                </Field>
-                <Field label="Total amount requested">
-                  <div id="apply-field-amountRequested" className="flex items-center gap-2">
-                    <span className="shrink-0 text-sm font-semibold text-navy">Gh₵</span>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      className={fieldErrorBorder(Boolean(fieldErrors.amountRequested), inputClass)}
-                      value={amountRequested}
-                      onChange={(e) => {
-                        setAmountRequested(e.target.value);
-                        setFieldErrors((prev) => {
-                          if (!prev.amountRequested) return prev;
-                          const next = { ...prev };
-                          delete next.amountRequested;
-                          return next;
-                        });
-                      }}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                  <FormFieldError message={fieldErrors.amountRequested} />
-                </Field>
-              </div>
+              <Field label="Additional notes (optional)">
+                <textarea className={inputClass} rows={2} value={purpose} onChange={(e) => setPurpose(e.target.value)} />
+              </Field>
             </div>
 
             <ApplicationDeclarationBlock
@@ -1199,19 +1184,6 @@ export function ApplicationNewPage() {
               errors={fieldErrors}
             />
 
-            <div className="space-y-4 border-t border-canvas pt-6">
-              <DetailLine
-                label="Signature / Thumbprint (applicant)"
-                value={
-                  declaration.signatureMode === "thumbprint"
-                    ? "Thumbprint"
-                    : declaration.signatureMode === "signature"
-                      ? "Signature"
-                      : "—"
-                }
-              />
-              <DetailLine label="Endorsed by (application)" value={applicationEndorsedByName} />
-            </div>
           </div>
 
           <div className="no-print mt-8 flex flex-wrap gap-2 rounded-2xl bg-surface px-4 py-4 shadow-sm sm:gap-3 sm:px-6 sm:py-5">

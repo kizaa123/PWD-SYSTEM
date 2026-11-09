@@ -381,7 +381,7 @@ export function SupportPurposeDetails({
           </fieldset>
         )}
 
-        {educationPathReady(value) && (
+        {educationPathReady(value) && value.educationTrack !== "apprenticeship" && (
           <fieldset className="space-y-2 border-t border-slate-200 pt-3">
             <legend className="text-xs font-medium text-muted">Type of educational support</legend>
             <div className="flex flex-wrap gap-x-6 gap-y-2">

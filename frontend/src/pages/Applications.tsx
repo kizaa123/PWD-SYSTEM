@@ -4,7 +4,8 @@ import { api, formatSupportYearWithDateTime, formatSupportYearWithDateTimeMobile
 import { ApplyForSupportLink } from "../components/ApplyForSupportLink";
 import { RegistrationCycleStatus } from "../components/RegistrationCycleStatus";
 import { ApplicationReferenceLink } from "../components/ApplicationReferenceLink";
-import { Money, ReferenceNumber, inputClass } from "../components/StatusBadge";
+import { ReferenceNumber, inputClass } from "../components/StatusBadge";
+import { applicationSupportTypeColumnLabel } from "../lib/applicationSupportDisplay";
 import { PageTitle } from "../components/PageTitle";
 import { useAuth } from "../lib/auth";
 import { registrationListPrimaryName, registrationListPrimaryPhone } from "../lib/registrationListDisplay";
@@ -15,10 +16,11 @@ type ApplicationRow = {
   applicant_profile_id: string;
   reference: string;
   full_name: string;
+  category_code: string;
   category_name: string;
   status: string;
   application_year: number;
-  amount_requested_pesewas: number | null;
+  purpose_summary: string | null;
   created_at: string;
   endorsed_by_name?: string | null;
   applied_current_year?: boolean;
@@ -29,8 +31,9 @@ type CurrentYearApplication = {
   id: string;
   reference: string;
   status: string;
+  category_code: string;
   category_name: string;
-  amount_requested_pesewas: number | null;
+  purpose_summary: string | null;
   created_at: string;
   application_year: number;
   office_use_qualified?: string | null;
@@ -282,9 +285,9 @@ export function ApplicationsPage() {
                 </th>
                 <th>Applicant</th>
                 <th>Category</th>
-                <th className="table-cell-nowrap-sm">
-                  <span className="sm:hidden">Req.(GHS)</span>
-                  <span className="hidden sm:inline">Requested(GHS)</span>
+                <th className="table-cell-nowrap-sm min-w-[5.5rem]">
+                  <span className="sm:hidden">Support</span>
+                  <span className="hidden sm:inline">Type of support</span>
                 </th>
                 <th>
                   <span className="sm:hidden">Endorsed</span>
@@ -329,7 +332,15 @@ export function ApplicationsPage() {
                       </td>
                       <td>{registrationListPrimaryName(r)}</td>
                       <td>{app?.category_name || "—"}</td>
-                      <td>{app ? <Money bare pesewas={app.amount_requested_pesewas} /> : <span className="text-muted">—</span>}</td>
+                      <td className="text-sm leading-snug">
+                        {app
+                          ? applicationSupportTypeColumnLabel(
+                              app.category_code,
+                              app.category_name,
+                              app.purpose_summary,
+                            )
+                          : "—"}
+                      </td>
                       <td>{endorsedByLabel(r)}</td>
                       <td className="table-cell-status-apps">
                         {app ? (
@@ -363,9 +374,9 @@ export function ApplicationsPage() {
                 </th>
                 <th>Applicant</th>
                 <th>Category</th>
-                <th className="table-cell-nowrap-sm">
-                  <span className="sm:hidden">Req.(GHS)</span>
-                  <span className="hidden sm:inline">Requested(GHS)</span>
+                <th className="table-cell-nowrap-sm min-w-[5.5rem]">
+                  <span className="sm:hidden">Support</span>
+                  <span className="hidden sm:inline">Type of support</span>
                 </th>
                 <th>
                   <span className="sm:hidden">Endorsed</span>
@@ -402,8 +413,12 @@ export function ApplicationsPage() {
                       </td>
                       <td>{r.full_name}</td>
                       <td>{r.category_name}</td>
-                      <td>
-                        <Money bare pesewas={r.amount_requested_pesewas} />
+                      <td className="text-sm leading-snug">
+                        {applicationSupportTypeColumnLabel(
+                          r.category_code,
+                          r.category_name,
+                          r.purpose_summary,
+                        )}
                       </td>
                       <td>{r.endorsed_by_name?.trim() || "—"}</td>
                       <td className="table-cell-status-apps">

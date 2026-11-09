@@ -37,6 +37,7 @@ type ApplicationSummary = {
   status: string;
   amount_requested_pesewas: number | null;
   amount_approved_pesewas: number | null;
+  purpose_summary?: string | null;
   created_at: string;
   office_use_qualified?: string | null;
 };

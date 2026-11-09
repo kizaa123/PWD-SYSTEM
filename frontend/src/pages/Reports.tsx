@@ -210,7 +210,6 @@ export function ReportsPage() {
             registered={stats.registered}
             applied={stats.applied}
             notApplied={stats.notApplied}
-            totalRequestedPesewas={stats.totalRequestedPesewas}
             yearLabel={stats.yearFilterAll ? activeFilterLabel : undefined}
           />
           <div className="grid gap-5 xl:grid-cols-2">

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { EducationLevelSelect, EducationLevelTextInput } from "../components/EducationLevelSelect";
+import { EducationLevelSelect } from "../components/EducationLevelSelect";
 import { educationLevelForSubmit, parseEducationLevelForForm } from "../lib/educationLevels";
 import { GhanaCardInput } from "../components/GhanaCardInput";
 import { NhisInput } from "../components/NhisInput";
@@ -15,6 +15,7 @@ import {
 } from "../components/RegistrationFormUi";
 import { api, uploadApplicantPassportPhoto } from "../lib/api";
 import { disabilityFromRegistration } from "../lib/disabilityScheduleB";
+import { formatAppDateFromIso } from "../lib/dateFormat";
 import { FormFieldError, fieldErrorBorder } from "../components/FormFieldError";
 import { displayGhanaCard, formatGhanaCard, ghanaCardValidationError } from "../lib/ghanaCardFormat";
 import { formatGhanaPhone, phoneValidationError } from "../lib/ghanaPhoneFormat";
@@ -65,6 +66,7 @@ type ApplicantDetail = {
   registration_type: string;
   photo_path: string | null;
   caregiver_photo_path: string | null;
+  created_at: string;
   identifiers: { id_type: string; value_normalized: string }[];
   caregivers: (CaregiverRow & { caregiver_ghana_card?: string | null })[];
   registrationSupportIntake?: { applicationDetails?: Record<string, unknown>; purposeForm?: Record<string, unknown> } | null;
@@ -92,6 +94,7 @@ const emptyForm: FormState = {
   caregiverAge: "",
   caregiverSex: "female",
   caregiverEducationLevel: "",
+  caregiverEducationLevelOther: "",
   caregiverHomeAddress: "",
   caregiverCommunityName: "",
   caregiverPhone: "",
@@ -145,7 +148,10 @@ function applicantToForm(a: ApplicantDetail, scheduleB: string[]): FormState {
     caregiverName: cg?.full_name ?? "",
     caregiverAge: cg?.age != null ? String(cg.age) : "",
     caregiverSex: cg?.sex === "male" ? "male" : "female",
-    caregiverEducationLevel: cg?.education_level ?? "",
+    ...(() => {
+      const ed = parseEducationLevelForForm(cg?.education_level);
+      return { caregiverEducationLevel: ed.level, caregiverEducationLevelOther: ed.other };
+    })(),
     caregiverHomeAddress: cg?.home_address ?? "",
     caregiverCommunityName: cg?.community_name?.trim() || a.community_name?.trim() || "",
     caregiverPhone: formatGhanaPhone(cg?.phone ?? ""),
@@ -199,6 +205,7 @@ export function ApplicantEditPage() {
     registrationType: string;
     photoPath: string | null;
     caregiverPhotoPath: string | null;
+    createdAt: string;
   } | null>(null);
   const [form, setForm] = useState<FormState>({ ...emptyForm });
   const [loading, setLoading] = useState(true);
@@ -236,6 +243,7 @@ export function ApplicantEditPage() {
           registrationType: a.registration_type,
           photoPath: a.photo_path,
           caregiverPhotoPath: a.caregiver_photo_path,
+          createdAt: a.created_at,
         });
         setError("");
       })
@@ -297,7 +305,7 @@ export function ApplicantEditPage() {
           caregiverName: form.caregiverName,
           caregiverAge: form.caregiverAge ? Number(form.caregiverAge) : null,
           caregiverSex: form.caregiverSex,
-          caregiverEducationLevel: form.caregiverEducationLevel,
+          caregiverEducationLevel: educationLevelForSubmit(form.caregiverEducationLevel, form.caregiverEducationLevelOther),
           caregiverHomeAddress: form.caregiverHomeAddress,
           caregiverCommunityName: form.caregiverCommunityName,
           caregiverPhone: form.caregiverPhone,
@@ -381,15 +389,20 @@ export function ApplicantEditPage() {
               />
             }
           >
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Full name">
-                <input
-                  className={inputClass}
-                  value={form.caregiverName}
-                  onChange={(e) => set("caregiverName", e.target.value)}
-                  required
-                />
-              </Field>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2 text-sm text-navy">
+              <span className="font-medium">Registration date</span>
+              <span className="text-muted"> · </span>
+              <span>{formatAppDateFromIso(meta?.createdAt) || "—"}</span>
+            </div>
+            <Field label="Full name">
+              <input
+                className={inputClass}
+                value={form.caregiverName}
+                onChange={(e) => set("caregiverName", e.target.value)}
+                required
+              />
+            </Field>
               <Field label="Ghana Card (PIN)">
                 <div id="edit-field-caregiverGhanaCard">
                   <GhanaCardInput
@@ -442,10 +455,12 @@ export function ApplicantEditPage() {
                   onOther={(v) => set("caregiverResidenceOther", v)}
                 />
                 <Field label="Level of education">
-                  <EducationLevelTextInput
+                  <EducationLevelSelect
                     className={inputClass}
                     value={form.caregiverEducationLevel}
+                    otherValue={form.caregiverEducationLevelOther}
                     onChange={(v) => set("caregiverEducationLevel", v)}
+                    onOtherChange={(v) => set("caregiverEducationLevelOther", v)}
                   />
                 </Field>
               </div>
@@ -529,6 +544,11 @@ export function ApplicantEditPage() {
           }
         >
           <div className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2 text-sm text-navy">
+              <span className="font-medium">Registration date</span>
+              <span className="text-muted"> · </span>
+              <span>{formatAppDateFromIso(meta?.createdAt) || "—"}</span>
+            </div>
             <Field label={isCaregiverReg ? "Name of beneficiary (PWD)" : "Full name"}>
               <input
                 className={inputClass}

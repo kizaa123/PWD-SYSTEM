@@ -328,7 +328,7 @@ applicantRouter.get("/:id", requirePermission("applicants.read", "applications.r
     [row.id as string],
   );
   let applications = all(
-    `SELECT a.id, a.reference, a.category_code, a.status, a.application_year, a.amount_requested_pesewas, a.amount_approved_pesewas, a.created_at, a.office_use_qualified, sc.name AS category_name
+    `SELECT a.id, a.reference, a.category_code, a.status, a.application_year, a.amount_requested_pesewas, a.amount_approved_pesewas, a.purpose_summary, a.created_at, a.office_use_qualified, sc.name AS category_name
      FROM applications a
      JOIN support_categories sc ON sc.code = a.category_code
      WHERE a.applicant_profile_id = ?

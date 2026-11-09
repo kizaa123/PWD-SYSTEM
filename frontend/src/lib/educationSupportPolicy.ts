@@ -11,11 +11,21 @@ export function applicationSupportTypeCode(
   return null;
 }
 
+export type EducationSchoolPurposeHint = {
+  educationTrack?: string;
+  educationalSupportType?: string;
+};
+
 export function applicationRequiresEducationSchoolDetails(
   categoryCode: string,
   intake?: RegistrationSupportIntake | null,
+  purpose?: EducationSchoolPurposeHint,
 ): boolean {
-  return applicationSupportTypeCode(categoryCode, intake) === "education";
+  if (applicationSupportTypeCode(categoryCode, intake) !== "education") return false;
+  if (purpose?.educationTrack === "apprenticeship") return false;
+  const st = purpose?.educationalSupportType;
+  if (st === "technical_aid") return false;
+  return st === "school_fees" || st === "bursary";
 }
 
 export const EDUCATION_SCHOOL_NAME_MESSAGE = "Enter the school name.";

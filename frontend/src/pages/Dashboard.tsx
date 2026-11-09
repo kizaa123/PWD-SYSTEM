@@ -49,7 +49,6 @@ function YearDashboardBody({ stats }: { stats: YearStats }) {
         registered={stats.registered}
         applied={stats.applied}
         notApplied={stats.notApplied}
-        totalRequestedPesewas={stats.totalRequestedPesewas}
       />
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
         <SupportRequestHistogram bars={stats.supportBreakdown} />
@@ -146,7 +145,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageTitle title="Dashboard" subtitle={`${yearLabel} overview — registrations, applications, and requested support`} />
+      <PageTitle title="Dashboard" subtitle={`${yearLabel} overview — registrations and applications`} />
       <YearDashboardBody stats={yearStats} />
     </div>
   );

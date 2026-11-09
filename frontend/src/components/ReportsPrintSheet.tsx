@@ -54,7 +54,6 @@ export function ReportsPrintSheet({
             <PrintRow label="Registered" value={stats.registered} />
             <PrintRow label="Applied" value={stats.applied} />
             <PrintRow label="Not applied" value={stats.notApplied} />
-            <PrintRow label="Total requested" value={pesewasToGhs(stats.totalRequestedPesewas)} />
           </tbody>
         </table>
       </section>
@@ -66,7 +65,6 @@ export function ReportsPrintSheet({
             <tr>
               <th className="reports-print-th">Category</th>
               <th className="reports-print-th">Applicants</th>
-              <th className="reports-print-th">Requested</th>
             </tr>
           </thead>
           <tbody>
@@ -74,7 +72,6 @@ export function ReportsPrintSheet({
               <tr key={c.category_code}>
                 <td className="reports-print-td">{CATEGORY_LABELS[c.category_code] || c.category_name}</td>
                 <td className="reports-print-td">{c.applicants}</td>
-                <td className="reports-print-td">{pesewasToGhs(c.requested_pesewas)}</td>
               </tr>
             ))}
           </tbody>
@@ -88,7 +85,6 @@ export function ReportsPrintSheet({
             <tr>
               <th className="reports-print-th">Purpose</th>
               <th className="reports-print-th">Applications</th>
-              <th className="reports-print-th">Requested</th>
             </tr>
           </thead>
           <tbody>
@@ -96,7 +92,6 @@ export function ReportsPrintSheet({
               <tr key={b.label}>
                 <td className="reports-print-td">{b.label}</td>
                 <td className="reports-print-td">{b.applications}</td>
-                <td className="reports-print-td">{pesewasToGhs(b.requested_pesewas)}</td>
               </tr>
             ))}
           </tbody>
