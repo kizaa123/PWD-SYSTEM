@@ -995,7 +995,7 @@ export function ApplicationNewPage() {
                           <div className="sm:col-span-2">
                             <DetailLine label="Home address" value={dossier.home_address || "—"} />
                           </div>
-                          <DetailLine label="Endorsed by (registration)" value={registrationEndorsedByName} />
+                          <DetailLine label="Registered by" value={registrationEndorsedByName} />
                         </div>
                         <div className="mt-6 border-t border-canvas pt-6">{disabilityBlock}</div>
                       </div>
@@ -1012,7 +1012,7 @@ export function ApplicationNewPage() {
                           <div className="sm:col-span-2">
                             <DetailLine label="Home address" value={dossier.home_address || "—"} />
                           </div>
-                          <DetailLine label="Endorsed by (registration)" value={registrationEndorsedByName} />
+                          <DetailLine label="Registered by" value={registrationEndorsedByName} />
                         </div>
                         <div className="border-t border-canvas pt-8">{disabilityBlock}</div>
                     </div>

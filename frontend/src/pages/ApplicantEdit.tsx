@@ -88,7 +88,7 @@ const emptyForm: FormState = {
   occupation: "",
   educationLevel: "",
   educationLevelOther: "",
-  residenceType: "Renting",
+  residenceType: "",
   residenceOther: "",
   caregiverName: "",
   caregiverAge: "",
@@ -99,7 +99,7 @@ const emptyForm: FormState = {
   caregiverCommunityName: "",
   caregiverPhone: "",
   caregiverGhanaCard: "",
-  caregiverResidenceType: "Renting",
+  caregiverResidenceType: "",
   caregiverResidenceOther: "",
   caregiverRelationship: "",
   caregiverRelationshipOther: "",
@@ -143,7 +143,7 @@ function applicantToForm(a: ApplicantDetail, scheduleB: string[]): FormState {
       const ed = parseEducationLevelForForm(a.education_level);
       return { educationLevel: ed.level, educationLevelOther: ed.other };
     })(),
-    residenceType: a.residence_type || "Renting",
+    residenceType: a.residence_type || "",
     residenceOther: a.residence_other ?? "",
     caregiverName: cg?.full_name ?? "",
     caregiverAge: cg?.age != null ? String(cg.age) : "",
@@ -156,7 +156,7 @@ function applicantToForm(a: ApplicantDetail, scheduleB: string[]): FormState {
     caregiverCommunityName: cg?.community_name?.trim() || a.community_name?.trim() || "",
     caregiverPhone: formatGhanaPhone(cg?.phone ?? ""),
     caregiverGhanaCard: formatGhanaCard(caregiverGhana) || displayGhanaCard(caregiverGhana),
-    caregiverResidenceType: cg?.residence_type || "Renting",
+    caregiverResidenceType: cg?.residence_type || "",
     caregiverResidenceOther: cg?.residence_other ?? "",
     caregiverRelationship: cg?.relationship ?? "",
     caregiverRelationshipOther: cg?.relationship_other ?? "",
@@ -680,14 +680,17 @@ export function ApplicantEditPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Specific condition / notes (optional)">
-              <input
-                className={inputClass}
-                value={form.disabilityOther}
-                onChange={(e) => set("disabilityOther", e.target.value)}
-                placeholder="e.g. Cerebral palsy, partial vision impairment"
-              />
-            </Field>
+            {form.disabilityCategory.startsWith("Other") ? (
+              <Field label="Specify disability category">
+                <input
+                  className={inputClass}
+                  value={form.disabilityOther}
+                  onChange={(e) => set("disabilityOther", e.target.value)}
+                  placeholder="Describe the disability category"
+                  required
+                />
+              </Field>
+            ) : null}
             <Field label="Level of education">
               <EducationLevelSelect
                 className={inputClass}

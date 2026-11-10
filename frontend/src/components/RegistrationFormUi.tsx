@@ -2,6 +2,8 @@ import { Field, inputClass } from "./StatusBadge";
 
 export const RESIDENCE_OPTIONS = ["Renting", "Rent-free", "Perching", "Squatting", "Caretaker", "Other"];
 
+export const RESIDENCE_TYPE_PLACEHOLDER = "Select type of Residence";
+
 export const CAREGIVER_RELATIONSHIP_OPTIONS = ["Mother", "Father", "Other relative", "Friend", "Other"];
 
 export const CAREGIVER_PURPOSE_OPTIONS = [

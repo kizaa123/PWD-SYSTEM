@@ -23,6 +23,7 @@ import { nhisValidationError } from "../lib/nhisFormat";
 import { phoneValidationError } from "../lib/ghanaPhoneFormat";
 import { useAuth } from "../lib/auth";
 import { formatAppDate } from "../lib/dateFormat";
+import { RESIDENCE_OPTIONS, RESIDENCE_TYPE_PLACEHOLDER } from "../components/RegistrationFormUi";
 
 type Lookups = {
   regions: { id: string; name: string }[];
@@ -31,15 +32,6 @@ type Lookups = {
 };
 
 type RegType = "pwd" | "caregiver";
-
-const RESIDENCE_OPTIONS = [
-  "Renting",
-  "Rent-free",
-  "Perching",
-  "Squatting",
-  "Caretaker",
-  "Other",
-];
 
 const CAREGIVER_RELATIONSHIPS = [
   "Mother",
@@ -74,7 +66,7 @@ const emptyForm = {
   occupation: "",
   educationLevel: "",
   educationLevelOther: "",
-  residenceType: "Renting",
+  residenceType: "",
   residenceOther: "",
 
   // Caregiver particulars
@@ -87,7 +79,7 @@ const emptyForm = {
   caregiverCommunityName: "",
   caregiverPhone: "",
   caregiverGhanaCard: "",
-  caregiverResidenceType: "Renting",
+  caregiverResidenceType: "",
   caregiverResidenceOther: "",
   caregiverRelationship: "",
   caregiverRelationshipOther: "",
@@ -106,7 +98,9 @@ type RegFieldKey =
   | "caregiverGhanaCard"
   | "caregiverPhone"
   | "nhisNumber"
-  | "passportPhoto";
+  | "passportPhoto"
+  | "residenceType"
+  | "caregiverResidenceType";
 
 export function ApplicantNewPage() {
   const navigate = useNavigate();
@@ -141,7 +135,9 @@ export function ApplicantNewPage() {
       k === "caregiverName" ||
       k === "caregiverGhanaCard" ||
       k === "caregiverPhone" ||
-      k === "nhisNumber"
+      k === "nhisNumber" ||
+      k === "residenceType" ||
+      k === "caregiverResidenceType"
     ) {
       clearFieldError(k as RegFieldKey);
     }
@@ -164,8 +160,13 @@ export function ApplicantNewPage() {
     if (beneficiaryPhoneErr) err.phone = beneficiaryPhoneErr;
     const nhisErr = nhisValidationError(form.nhisNumber, false);
     if (nhisErr) err.nhisNumber = nhisErr;
-
+    if (!form.residenceType.trim()) {
+      err.residenceType = "Select type of residence for the person with disability.";
+    }
     if (regType === "caregiver") {
+      if (!form.caregiverResidenceType.trim()) {
+        err.caregiverResidenceType = "Select type of residence for the caregiver.";
+      }
       if (!form.caregiverName.trim()) err.caregiverName = "Caregiver name is required.";
       const caregiverCardErr = ghanaCardValidationError(form.caregiverGhanaCard, true);
       if (caregiverCardErr) err.caregiverGhanaCard = caregiverCardErr;
@@ -588,17 +589,25 @@ export function ApplicantNewPage() {
               <div className="sm:col-span-2 grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-navy">Type of Residence</label>
-                  <select
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-navy outline-none focus:border-teal focus:ring-1 focus:ring-teal"
-                    value={form.caregiverResidenceType}
-                    onChange={(e) => set("caregiverResidenceType", e.target.value)}
-                  >
-                    {RESIDENCE_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
+                  <div id="reg-field-caregiverResidenceType">
+                    <select
+                      className={`w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-navy outline-none focus:border-teal focus:ring-1 focus:ring-teal ${
+                        fieldErrors.caregiverResidenceType ? "border-red-400" : "border-slate-300"
+                      }`}
+                      value={form.caregiverResidenceType}
+                      onChange={(e) => set("caregiverResidenceType", e.target.value)}
+                    >
+                      <option value="">{RESIDENCE_TYPE_PLACEHOLDER}</option>
+                      {RESIDENCE_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                    {fieldErrors.caregiverResidenceType ? (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.caregiverResidenceType}</p>
+                    ) : null}
+                  </div>
                   {form.caregiverResidenceType === "Other" && (
                     <input
                       className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-navy outline-none focus:border-teal"
@@ -855,17 +864,25 @@ export function ApplicantNewPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-navy">Type of Residence</label>
-                <select
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-navy outline-none focus:border-teal focus:ring-1 focus:ring-teal"
-                  value={form.residenceType}
-                  onChange={(e) => set("residenceType", e.target.value)}
-                >
-                  {RESIDENCE_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
+                <div id="reg-field-residenceType">
+                  <select
+                    className={`w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-navy outline-none focus:border-teal focus:ring-1 focus:ring-teal ${
+                      fieldErrors.residenceType ? "border-red-400" : "border-slate-300"
+                    }`}
+                    value={form.residenceType}
+                    onChange={(e) => set("residenceType", e.target.value)}
+                  >
+                    <option value="">{RESIDENCE_TYPE_PLACEHOLDER}</option>
+                    {RESIDENCE_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.residenceType ? (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.residenceType}</p>
+                  ) : null}
+                </div>
                 {form.residenceType === "Other" && (
                   <input
                     className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-navy outline-none focus:border-teal"
@@ -908,17 +925,20 @@ export function ApplicantNewPage() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-navy mb-1">
-              Specific Condition / Notes <span className="text-xs text-muted font-normal">(Optional)</span>
-            </label>
-            <input
-              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-navy outline-none placeholder:text-slate-400 focus:border-teal focus:ring-1 focus:ring-teal"
-              value={form.disabilityOther}
-              onChange={(e) => set("disabilityOther", e.target.value)}
-              placeholder="e.g. Cerebral palsy, Partial vision impairment"
-            />
-          </div>
+          {form.disabilityCategory.startsWith("Other") ? (
+            <div>
+              <label className="block text-sm font-medium text-navy mb-1">
+                Specify disability category <span className="text-red-500">*</span>
+              </label>
+              <input
+                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-navy outline-none placeholder:text-slate-400 focus:border-teal focus:ring-1 focus:ring-teal"
+                value={form.disabilityOther}
+                onChange={(e) => set("disabilityOther", e.target.value)}
+                placeholder="Describe the disability category"
+                required
+              />
+            </div>
+          ) : null}
 
           <div>
             <label className="block text-sm font-medium text-navy mb-1">Level of education</label>

@@ -94,8 +94,8 @@ export function ApplicantsPage() {
               <th className="table-col-disability">Disability</th>
               <th>Ghana Card</th>
               <th>
-                <span className="sm:hidden">Endorsed</span>
-                <span className="hidden sm:inline">Endorsed by</span>
+                <span className="sm:hidden">Registered</span>
+                <span className="hidden sm:inline">Registered by</span>
               </th>
               <th className="table-cell-nowrap-sm text-right">Action</th>
             </tr>

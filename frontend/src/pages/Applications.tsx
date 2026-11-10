@@ -11,6 +11,8 @@ import { PageTitle } from "../components/PageTitle";
 import { useAuth } from "../lib/auth";
 import { registrationListPrimaryName, registrationListPrimaryPhone } from "../lib/registrationListDisplay";
 import { canOpenApplicationsList, visibleApplicationStatuses, workflowQueues } from "../lib/workflowAccess";
+import { registrationCycleSortRank } from "../lib/registrationCycleSort";
+import { applicationEndorsedByDisplay } from "../lib/applicationEndorsedBy";
 
 type ApplicationRow = {
   id: string;
@@ -38,6 +40,7 @@ type CurrentYearApplication = {
   created_at: string;
   application_year: number;
   office_use_qualified?: string | null;
+  endorsing_officer_name?: string | null;
 };
 
 type RegisterFolderRow = {
@@ -93,12 +96,6 @@ function isApplicationFolderStatus(status: string): boolean {
 }
 
 const CURRENT_APPLICATION_YEAR = new Date().getFullYear();
-
-function endorsedByLabel(row: RegisterFolderRow) {
-  if (row.registered_by_name?.trim()) return row.registered_by_name.trim();
-  if (row.registration_source === "self") return "Self-registered (legacy)";
-  return "—";
-}
 
 export function ApplicationsPage() {
   const { user, has, isRole } = useAuth();
@@ -179,9 +176,30 @@ export function ApplicationsPage() {
     } else if (status === APPLIED_FOLDER_STATUS) {
       list = list.filter((r) => r.applied_current_year);
     }
-    const sorted = [...list].sort((a, b) =>
-      registrationListPrimaryName(a).localeCompare(registrationListPrimaryName(b)),
-    );
+    const sorted = [...list].sort((a, b) => {
+      if (status === "") {
+        const appA = a.current_year_application;
+        const appB = b.current_year_application;
+        const rankA = registrationCycleSortRank(
+          {
+            status: appA?.status ?? "",
+            applied_current_year: a.applied_current_year,
+            office_use_qualified: appA?.office_use_qualified,
+          },
+          Boolean(appA),
+        );
+        const rankB = registrationCycleSortRank(
+          {
+            status: appB?.status ?? "",
+            applied_current_year: b.applied_current_year,
+            office_use_qualified: appB?.office_use_qualified,
+          },
+          Boolean(appB),
+        );
+        if (rankA !== rankB) return rankA - rankB;
+      }
+      return registrationListPrimaryName(a).localeCompare(registrationListPrimaryName(b));
+    });
     const query = q.trim().toLowerCase();
     if (!query) return sorted;
     return sorted.filter(
@@ -328,7 +346,7 @@ export function ApplicationsPage() {
                             )
                           : "—"}
                       </td>
-                      <td>{endorsedByLabel(r)}</td>
+                      <td>{applicationEndorsedByDisplay(app)}</td>
                       <td className="table-cell-status-apps">
                         {app ? (
                           <RegistrationCycleStatus
@@ -395,7 +413,7 @@ export function ApplicationsPage() {
                           r.purpose_summary,
                         )}
                       </td>
-                      <td>{r.endorsed_by_name?.trim() || "—"}</td>
+                      <td>{applicationEndorsedByDisplay({ endorsed_by_name: r.endorsed_by_name })}</td>
                       <td className="table-cell-status-apps">
                         <RegistrationCycleStatus row={r} />
                       </td>

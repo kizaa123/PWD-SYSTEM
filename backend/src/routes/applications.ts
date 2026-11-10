@@ -110,7 +110,7 @@ applicationRouter.get("/", requirePermission("applications.read", "profile.self.
   let sql = `SELECT a.id, a.applicant_profile_id, a.reference, a.category_code, a.status, a.application_year, a.amount_requested_pesewas, a.amount_approved_pesewas,
                     a.created_at, a.submitted_at, a.purpose_summary, a.region_id, a.district_id, a.office_use_qualified,
                     p.full_name, ap.applicant_ref, r.name AS region_name, d.name AS district_name, sc.name AS category_name,
-                    COALESCE(rp.full_name, rpc.full_name) AS endorsed_by_name
+                    NULLIF(TRIM(a.endorsing_officer_name), '') AS endorsed_by_name
              FROM applications a
              JOIN applicant_profiles ap ON ap.id = a.applicant_profile_id
              JOIN persons p ON p.id = ap.person_id

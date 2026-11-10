@@ -144,6 +144,7 @@ export type CurrentYearApplicationSummary = {
   created_at: string;
   application_year: number;
   office_use_qualified: string | null;
+  endorsing_officer_name: string | null;
 };
 
 /** Latest active application per profile for a given year. */
@@ -151,7 +152,8 @@ export function currentYearApplicationsByProfile(year: number): Map<string, Curr
   type Row = CurrentYearApplicationSummary & { applicant_profile_id: string };
   const rows = all<Row>(
     `SELECT a.id, a.applicant_profile_id, a.reference, a.status, a.category_code, sc.name AS category_name,
-            a.amount_requested_pesewas, a.purpose_summary, a.created_at, a.application_year, a.office_use_qualified
+            a.amount_requested_pesewas, a.purpose_summary, a.created_at, a.application_year, a.office_use_qualified,
+            a.endorsing_officer_name
      FROM applications a
      JOIN support_categories sc ON sc.code = a.category_code
      WHERE a.application_year = ?
@@ -173,6 +175,7 @@ export function currentYearApplicationsByProfile(year: number): Map<string, Curr
       created_at: row.created_at,
       application_year: row.application_year,
       office_use_qualified: (row.office_use_qualified as string | null) ?? null,
+      endorsing_officer_name: (row.endorsing_officer_name as string | null) ?? null,
     });
   }
   return map;
