@@ -1,11 +1,8 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
-import { RegistrationCycleStatus } from "../components/RegistrationCycleStatus";
-import { ApplicationReferenceLink } from "../components/ApplicationReferenceLink";
-import { StatusBadge } from "../components/StatusBadge";
 import { PageTitle } from "../components/PageTitle";
 import { LoadingSpinner } from "../components/GlobalLoadingBar";
+import { DashboardYearPicker } from "../components/DashboardYearPicker";
 import {
   CategoryPieChart,
   SupportRequestHistogram,
@@ -13,8 +10,20 @@ import {
   type YearCategorySlice,
   type YearSupportBar,
 } from "../components/DashboardYearCharts";
+import {
+  SupportTypeBreakdownPanel,
+  type SupportTypeCategoryGroup,
+} from "../components/SupportTypeBreakdownPanel";
 import { useAuth } from "../lib/auth";
 import { canRegisterApplicants } from "../lib/workflowAccess";
+import { formatAppDate } from "../lib/dateFormat";
+
+function scopeSummary(scopes: { scope_level: string }[] | undefined): string {
+  if (!scopes?.length) return "Your assigned scope";
+  if (scopes.some((s) => s.scope_level === "national")) return "National scope";
+  const levels = [...new Set(scopes.map((s) => s.scope_level))];
+  return levels.map((l) => l.replaceAll("_", " ")).join(", ");
+}
 
 type YearStats = {
   year: number;
@@ -27,48 +36,105 @@ type YearStats = {
 };
 
 type Dash = {
+  selectedYear: number;
+  availableYears: number[];
   yearStats: YearStats;
-  recent: {
-    id: string;
-    applicant_profile_id?: string;
-    reference: string;
-    status: string;
-    full_name: string;
-    category_code: string;
-    endorsed_by_name?: string | null;
-    applied_current_year?: boolean;
-  }[];
+  supportTypeGroups: SupportTypeCategoryGroup[];
   roleView?: string;
 };
 
-function YearDashboardBody({ stats }: { stats: YearStats }) {
+function YearDashboardBody({
+  stats,
+  supportTypeGroups,
+  yearLabel,
+  loading,
+  printMeta,
+}: {
+  stats: YearStats;
+  supportTypeGroups: SupportTypeCategoryGroup[];
+  yearLabel: string;
+  loading: boolean;
+  printMeta: { scopeLabel: string; generatedAt: string };
+}) {
   return (
-    <>
-      <YearStatCards
-        year={stats.year}
-        registered={stats.registered}
-        applied={stats.applied}
-        notApplied={stats.notApplied}
-      />
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        <SupportRequestHistogram bars={stats.supportBreakdown} />
-        <CategoryPieChart slices={stats.byCategory} />
+    <div className={`space-y-5 transition-opacity ${loading ? "pointer-events-none opacity-60" : ""}`}>
+      <div className="no-print space-y-5">
+        <YearStatCards
+          year={stats.year}
+          yearLabel={yearLabel}
+          registered={stats.registered}
+          applied={stats.applied}
+          notApplied={stats.notApplied}
+        />
+        <div className="grid gap-5 xl:grid-cols-2">
+          <SupportRequestHistogram bars={stats.supportBreakdown} />
+          <CategoryPieChart slices={stats.byCategory} />
+        </div>
       </div>
-    </>
+      <SupportTypeBreakdownPanel
+        groups={supportTypeGroups}
+        yearLabel={yearLabel}
+        variant="dashboard"
+        printMeta={printMeta}
+      />
+    </div>
   );
 }
 
 export function DashboardPage() {
-  const { has } = useAuth();
+  const { has, user } = useAuth();
+  const currentCalendarYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentCalendarYear);
+  const userPickedYear = useRef(false);
   const [data, setData] = useState<Dash | null>(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const welfare = canRegisterApplicants(has);
 
+  /** Each visit to Dashboard starts on the current support year; past years are opt-in via the picker. */
   useEffect(() => {
-    api<Dash>("/api/dashboard").then(setData).catch((e) => setError(e.message));
+    userPickedYear.current = false;
+    setSelectedYear(currentCalendarYear);
+  }, [currentCalendarYear]);
+
+  useEffect(() => {
+    const syncCalendarYear = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!userPickedYear.current) {
+        setSelectedYear(new Date().getFullYear());
+      }
+    };
+    document.addEventListener("visibilitychange", syncCalendarYear);
+    return () => document.removeEventListener("visibilitychange", syncCalendarYear);
   }, []);
 
-  if (error) return <div className="text-danger">{error}</div>;
+  const load = useCallback((year: number) => {
+    setLoading(true);
+    setError("");
+    api<Dash>(`/api/dashboard?year=${encodeURIComponent(year)}`)
+      .then((res) => {
+        setData(res);
+        setSelectedYear(res.selectedYear ?? year);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load(selectedYear);
+  }, [load, selectedYear]);
+
+  const yearOptions = useMemo(() => {
+    const fromApi = data?.availableYears ?? [];
+    return [...new Set([currentCalendarYear, selectedYear, ...fromApi])]
+      .filter((y) => y > 2000)
+      .sort((a, b) => b - a);
+  }, [data?.availableYears, selectedYear, currentCalendarYear]);
+
+  if (error && !data?.yearStats) {
+    return <div className="text-danger">{error}</div>;
+  }
+
   if (!data?.yearStats) {
     return (
       <div className="flex items-center gap-3 text-muted">
@@ -78,75 +144,46 @@ export function DashboardPage() {
     );
   }
 
-  const { yearStats } = data;
-  const yearLabel = yearStats.year;
-
-  if (welfare) {
-    return (
-      <div>
-        <PageTitle
-          title="Social welfare dashboard"
-          subtitle={`${yearLabel} registration and support activity in your district`}
-        />
-        <YearDashboardBody stats={yearStats} />
-
-        <section className="dashboard-page mt-8 rounded-2xl bg-surface p-5 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold text-navy">Your registration queue</h3>
-            <Link to="/applications" className="text-sm font-semibold text-teal hover:underline">
-              Open application folder
-            </Link>
-          </div>
-          {data.recent.length === 0 ? (
-            <p className="text-sm text-muted">No cases in registration right now.</p>
-          ) : (
-            <div className="data-table-scroll">
-              <table className="data-table text-left text-sm">
-                <thead className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-muted">
-                  <tr>
-                    <th>Reference</th>
-                    <th>Applicant</th>
-                    <th>Endorsed</th>
-                    <th className="table-cell-status-dashboard">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {data.recent.map((a) => (
-                    <tr key={a.id} className="hover:bg-slate-50/80">
-                      <td>
-                        <ApplicationReferenceLink applicationId={a.id}>{a.reference}</ApplicationReferenceLink>
-                      </td>
-                      <td className="font-medium text-navy">{a.full_name}</td>
-                      <td className="text-muted">{a.endorsed_by_name?.trim() || "—"}</td>
-                      <td className="table-cell-status-dashboard">
-                        {a.applicant_profile_id ? (
-                          <RegistrationCycleStatus
-                            row={{
-                              id: a.id,
-                              applicant_profile_id: a.applicant_profile_id,
-                              status: a.status,
-                              applied_current_year: a.applied_current_year,
-                            }}
-                          />
-                        ) : (
-                          <StatusBadge status={a.status} />
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
-    );
-  }
+  const { yearStats, supportTypeGroups } = data;
+  const yearLabel = String(selectedYear);
+  const printMeta = {
+    scopeLabel: scopeSummary(user?.scopes),
+    generatedAt: formatAppDate(new Date()),
+  };
 
   return (
-    <div>
-      <PageTitle title="Dashboard" subtitle={`${yearLabel} overview — registrations and applications`} />
-      <YearDashboardBody stats={yearStats} />
+    <div className="dashboard-page">
+      <div className="no-print">
+        <PageTitle
+          title={welfare ? "Social welfare dashboard" : "Dashboard"}
+          subtitle={
+            welfare
+              ? `Registrations and support requests for ${yearLabel} in your district`
+              : `${yearLabel} overview — Education, Health, and Income generating support`
+          }
+        />
+        <div className="mb-5">
+          <DashboardYearPicker
+            selectedYear={selectedYear}
+            years={yearOptions}
+            loading={loading}
+            onChange={(year) => {
+              userPickedYear.current = true;
+              setSelectedYear(year);
+            }}
+          />
+          {error ? (
+            <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          ) : null}
+        </div>
+      </div>
+      <YearDashboardBody
+        stats={yearStats}
+        supportTypeGroups={supportTypeGroups ?? []}
+        yearLabel={yearLabel}
+        loading={loading}
+        printMeta={printMeta}
+      />
     </div>
   );
 }

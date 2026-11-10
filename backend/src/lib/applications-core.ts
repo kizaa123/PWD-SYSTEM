@@ -39,6 +39,20 @@ export function sqlApplicationIsSubstantive(alias?: string): string {
     AND (${p}status != 'registration' OR ${p}office_use_qualified IN ('qualified', 'not_qualified'))`;
 }
 
+/**
+ * Support-type breakdown rosters: qualified applicants only (excludes office “not qualified” and rejected).
+ * In-progress files past registration without a decision yet are still included.
+ */
+export function sqlApplicationIncludedInSupportTypeBreakdown(alias = "a"): string {
+  const p = `${alias}.`;
+  return `${sqlApplicationIsSubstantive(alias)}
+    AND COALESCE(${p}office_use_qualified, '') != 'not_qualified'
+    AND (
+      ${p}office_use_qualified = 'qualified'
+      OR (${p}office_use_qualified IS NULL AND ${p}status NOT IN ('registration', 'returned_for_correction'))
+    )`;
+}
+
 /** EXISTS / NOT EXISTS any substantive application year (all years). */
 export function sqlProfileHasSubstantiveApplicationAnyYear(
   profileColumn = "ap.id",

@@ -19,7 +19,7 @@ export function SidebarClock() {
 
   return (
     <div className="sidebar-clock flex flex-col items-center gap-0 text-center">
-      <div className="sidebar-clock-time text-[1.75rem] font-bold leading-none text-white tabular-nums">
+      <div className="sidebar-clock-time text-base font-semibold leading-none text-white tabular-nums">
         {formatClock(now)}
       </div>
       <div className="sidebar-clock-date text-[11px] font-light leading-tight text-white/60">{formatAppDate(now)}</div>

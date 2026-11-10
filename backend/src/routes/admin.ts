@@ -7,9 +7,10 @@ import { all, get, now, run } from "../db/index.ts";
 import { audit } from "../lib/audit.ts";
 import { geoFilterSql, requireAuth, requirePermission } from "../lib/auth.ts";
 import { hashPassword, newId } from "../lib/crypto.ts";
-import { applicantProfileIdsAppliedForYear, currentApplicationYear } from "../lib/applications-core.ts";
+import { currentApplicationYear } from "../lib/applications-core.ts";
 import { loadAvailableReportYears, loadYearDashboardStats } from "../lib/dashboard-stats.ts";
 import { loadReportRosters } from "../lib/report-rosters.ts";
+import { loadSupportTypeBreakdown } from "../lib/support-type-breakdown.ts";
 import { STATUS_LABELS } from "../lib/constants.ts";
 import { ACTIVE_STAFF_WINDOW_MINUTES, loadActiveStaff } from "../lib/presence.ts";
 import { sqlStatusFilter } from "../lib/workflow-access.ts";
@@ -72,27 +73,14 @@ adminRouter.get("/dashboard", (req, res) => {
     geo.params,
   )?.c || 0;
 
-  const year = currentApplicationYear();
+  const rawYear = req.query.year != null ? String(req.query.year) : String(currentApplicationYear());
+  const parsedYear = Number(rawYear);
+  const year =
+    Number.isFinite(parsedYear) && parsedYear > 2000 ? Math.floor(parsedYear) : currentApplicationYear();
+  const availableYears = loadAvailableReportYears(user);
   const yearStats = loadYearDashboardStats(user, year);
-  const appliedThisYear = applicantProfileIdsAppliedForYear(year);
+  const supportTypeGroups = loadSupportTypeBreakdown(user, year);
 
-  const recent = all(
-    `SELECT a.id, a.applicant_profile_id, a.reference, a.status, a.category_code, a.updated_at, p.full_name, d.name AS district_name, r.name AS region_name,
-            rp.full_name AS endorsed_by_name
-     FROM applications a
-     JOIN applicant_profiles ap ON ap.id = a.applicant_profile_id
-     JOIN persons p ON p.id = ap.person_id
-     JOIN districts d ON d.id = a.district_id
-     JOIN regions r ON r.id = a.region_id
-     LEFT JOIN users ru ON ru.id = ap.registered_by_user_id
-     LEFT JOIN persons rp ON rp.id = ru.person_id
-     WHERE ${geo.sql}${phaseSql}
-     ORDER BY a.updated_at DESC LIMIT 8`,
-    [...geo.params, ...phaseParams],
-  ).map((row: Record<string, unknown>) => ({
-    ...row,
-    applied_current_year: appliedThisYear.has(row.applicant_profile_id as string),
-  }));
   const byCategory = all(
     `SELECT a.category_code, COUNT(*) AS c, COALESCE(SUM(a.amount_approved_pesewas),0) AS approved
      FROM applications a WHERE ${geo.sql}${isWelfare ? "" : phaseSql} GROUP BY a.category_code`,
@@ -115,11 +103,13 @@ adminRouter.get("/dashboard", (req, res) => {
     applicants,
     applicationsTotal,
     rejected,
+    selectedYear: year,
+    availableYears,
     yearStats,
+    supportTypeGroups,
     byStatus,
     byCategory,
     byDistrict,
-    recent,
     statusLabels: STATUS_LABELS,
     roleView: isWelfare ? "welfare" : "default",
   });
@@ -139,11 +129,13 @@ adminRouter.get("/reports", requirePermission("reports.district", "reports.regio
   const availableYears = loadAvailableReportYears(user);
   const yearStats = loadYearDashboardStats(user, statsYear);
   const rosters = loadReportRosters(user, statsYear);
+  const supportTypeGroups = loadSupportTypeBreakdown(user, statsYear);
   res.json({
     filterYear,
     year: filterYear === "all" ? currentApplicationYear() : filterYear,
     availableYears,
     yearStats,
+    supportTypeGroups,
     ...rosters,
     generatedAt: now(),
     scope: user.scopes,

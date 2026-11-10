@@ -15,6 +15,10 @@ import {
   ReportRegisteredTable,
 } from "../components/ReportRosterTable";
 import {
+  SupportTypeBreakdownPanel,
+  type SupportTypeCategoryGroup,
+} from "../components/SupportTypeBreakdownPanel";
+import {
   downloadYearReportCsv,
   type ReportAppliedRow,
   type ReportPersonRow,
@@ -35,6 +39,7 @@ type YearReportResponse = {
   notAppliedPeople: ReportPersonRow[];
   generatedAt: string;
   scope: { scope_level: string; region_id?: string | null; district_id?: string | null }[];
+  supportTypeGroups?: SupportTypeCategoryGroup[];
 };
 
 function scopeSummary(scopes: YearReportResponse["scope"]): string {
@@ -113,12 +118,14 @@ export function ReportsPage() {
           registeredPeople={data.registeredPeople}
           appliedPeople={data.appliedPeople}
           notAppliedPeople={data.notAppliedPeople}
+          supportTypeGroups={data.supportTypeGroups}
         />
       ) : null}
 
+      <div className="no-print">
       <PageTitle
         title="Reports"
-        subtitle="Year-by-year or all-years registration lists, applications, and support totals for your scope."
+        subtitle="Registration and application lists, support categories, and grouped support types (who requested school fees, technical aid, health needs, and more)."
       />
 
       <div className="no-print mb-6 rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm sm:p-5">
@@ -197,14 +204,14 @@ export function ReportsPage() {
       )}
 
       {loading && !stats && (
-        <div className="flex items-center gap-3 text-sm text-muted">
+        <div className="no-print flex items-center gap-3 text-sm text-muted">
           <LoadingSpinner className="h-5 w-5 text-teal" />
           Loading report…
         </div>
       )}
 
       {stats && data && (
-        <div className={`no-print space-y-5 transition-opacity ${loading ? "pointer-events-none opacity-50" : ""}`}>
+        <div className={`space-y-5 transition-opacity ${loading ? "pointer-events-none opacity-50" : ""}`}>
           <YearStatCards
             year={stats.yearFilterAll ? undefined : stats.year}
             registered={stats.registered}
@@ -216,6 +223,12 @@ export function ReportsPage() {
             <SupportRequestHistogram bars={stats.supportBreakdown} />
             <CategoryPieChart slices={stats.byCategory} />
           </div>
+
+          <SupportTypeBreakdownPanel
+            groups={data.supportTypeGroups ?? []}
+            yearLabel={activeFilterLabel}
+            variant="reports"
+          />
 
           <div className="rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm sm:p-5">
             <h2 className="text-sm font-semibold text-navy">People in this report</h2>
@@ -251,6 +264,7 @@ export function ReportsPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

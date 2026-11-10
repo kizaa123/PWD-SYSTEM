@@ -82,12 +82,12 @@ export function ApplicantsPage() {
         <table className="data-table text-left text-sm">
           <thead className="bg-canvas text-muted">
             <tr>
+              <th className="table-cell-nowrap-sm">Reg. date</th>
               <th>
                 <span className="sm:hidden">Person</span>
                 <span className="hidden sm:inline">Full name</span>
               </th>
               <th>Reference</th>
-              <th className="table-cell-nowrap-sm">Reg. date</th>
               <th>Phone</th>
               <th>Type</th>
               <th>Community</th>
@@ -103,6 +103,9 @@ export function ApplicantsPage() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-t border-canvas">
+                <td className="whitespace-nowrap text-xs sm:text-sm">
+                  {formatAppDateFromIso(r.created_at) || "—"}
+                </td>
                 <td>
                   <button type="button" className="text-left hover:text-teal" onClick={() => setViewId(r.id)}>
                     <span className="block font-semibold text-navy">{registrationListPrimaryName(r)}</span>
@@ -115,9 +118,6 @@ export function ApplicantsPage() {
                 </td>
                 <td>
                   <ReferenceNumber>{r.applicant_ref}</ReferenceNumber>
-                </td>
-                <td className="whitespace-nowrap text-xs sm:text-sm">
-                  {formatAppDateFromIso(r.created_at) || "—"}
                 </td>
                 <td>{registrationListPrimaryPhone(r)}</td>
                 <td className="text-xs font-semibold uppercase text-teal">

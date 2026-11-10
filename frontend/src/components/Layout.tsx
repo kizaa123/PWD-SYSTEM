@@ -107,9 +107,11 @@ export function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas text-navy">
-      <GlobalLoadingBar />
-      <ConnectivityBar />
+    <div className="app-shell min-h-screen bg-canvas text-navy">
+      <div className="app-print-chrome">
+        <GlobalLoadingBar />
+        <ConnectivityBar />
+      </div>
       <div className="flex min-h-screen">
         {menuOpen && (
           <button type="button" aria-label="Close menu" className="fixed inset-0 z-40 bg-navy/50 md:hidden" onClick={() => setMenuOpen(false)} />
@@ -117,7 +119,7 @@ export function Layout() {
 
         <aside
           id="sidebar"
-          className={`fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col bg-navy text-white transition-transform duration-200 md:sticky md:top-0 md:z-30 md:h-screen md:translate-x-0 ${
+          className={`app-print-chrome fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col bg-navy text-white transition-transform duration-200 md:sticky md:top-0 md:z-30 md:h-screen md:translate-x-0 ${
             menuOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"
           }`}
         >
@@ -171,7 +173,7 @@ export function Layout() {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-[45] flex items-center gap-3 border-b border-navy/10 bg-surface px-4 py-3 md:hidden">
+          <header className="app-print-chrome sticky top-0 z-[45] flex items-center gap-3 border-b border-navy/10 bg-surface px-4 py-3 md:hidden">
             <button
               type="button"
               className="rounded-xl p-3 text-navy hover:bg-canvas active:bg-canvas/80"

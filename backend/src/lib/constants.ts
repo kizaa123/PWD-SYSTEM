@@ -71,4 +71,7 @@ export const STATUS_LABELS: Record<string, string> = {
 
 export const PHASE_ORDER = ["registration", "interview", "selection", "disbursement", "completed"] as const;
 
+/** Yearly apply form — not caregiver registration intake or legacy categories. */
+export const ACTIVE_SUPPORT_CATEGORY_CODES = ["education", "health", "income_generating"] as const;
+
 export const DEMO_PASSWORD = "Demo1234";

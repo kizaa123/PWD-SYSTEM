@@ -1,5 +1,8 @@
-import { CATEGORY_LABELS, pesewasToGhs, STATUS_LABELS } from "../lib/api";
+import { createPortal } from "react-dom";
+import { CATEGORY_LABELS, STATUS_LABELS } from "../lib/api";
 import { formatAppDateFromIso } from "../lib/dateFormat";
+import { SupportTypePrintSections } from "./SupportTypePrintSections";
+import type { SupportTypeCategoryGroup } from "./SupportTypeBreakdownPanel";
 import type { ReportAppliedRow, ReportPersonRow, YearStatsExport } from "../lib/yearReportExport";
 
 type Props = {
@@ -10,19 +13,22 @@ type Props = {
   registeredPeople: ReportPersonRow[];
   appliedPeople: ReportAppliedRow[];
   notAppliedPeople: ReportPersonRow[];
+  supportTypeGroups?: SupportTypeCategoryGroup[];
 };
-
-function PrintRow({ label, value }: { label: string; value: string | number }) {
-  return (
-    <tr>
-      <th className="reports-print-th">{label}</th>
-      <td className="reports-print-td">{value}</td>
-    </tr>
-  );
-}
 
 function formatDate(iso: string) {
   return formatAppDateFromIso(iso) || iso;
+}
+
+function personNameCell(p: ReportPersonRow) {
+  return (
+    <div className="reports-print-name-block">
+      <div>{p.display_name}</div>
+      {p.registration_type === "caregiver" && p.beneficiary_name ? (
+        <div className="reports-print-cell-sub">PWD: {p.beneficiary_name}</div>
+      ) : null}
+    </div>
+  );
 }
 
 export function ReportsPrintSheet({
@@ -33,164 +39,194 @@ export function ReportsPrintSheet({
   registeredPeople,
   appliedPeople,
   notAppliedPeople,
+  supportTypeGroups = [],
 }: Props) {
-  const topBars = stats.supportBreakdown.slice(0, 14);
+  const hasTypeGroups = supportTypeGroups.length > 0;
+  const purposeRows = hasTypeGroups ? [] : stats.supportBreakdown.slice(0, 20);
 
-  return (
-    <div className="reports-print-sheet hidden print:block" aria-hidden>
+  const sheet = (
+    <div className="reports-print-sheet" aria-hidden>
       <header className="reports-print-header">
         <p className="reports-print-org">National Council on Persons with Disability</p>
-        <h1 className="reports-print-title">Yearly support report — {filterLabel}</h1>
+        <p className="reports-print-org-sub">DACF support register — district report</p>
+        <h1 className="reports-print-title">Yearly support report</h1>
         <p className="reports-print-meta">
-          Generated {generatedAt}
-          {scopeLabel ? ` · ${scopeLabel}` : ""}
+          Period: <strong>{filterLabel}</strong>
+          {scopeLabel ? ` · ${scopeLabel}` : ""} · Printed {generatedAt}
         </p>
       </header>
 
       <section className="reports-print-section">
-        <h2 className="reports-print-section-title">Summary</h2>
-        <table className="reports-print-table">
+        <h2 className="reports-print-section-title">At a glance</h2>
+        <table className="reports-print-table reports-print-stat-table">
           <tbody>
-            <PrintRow label="Registered" value={stats.registered} />
-            <PrintRow label="Applied" value={stats.applied} />
-            <PrintRow label="Not applied" value={stats.notApplied} />
+            <tr>
+              <td className="reports-print-stat-cell">
+                <div className="reports-print-stat-label">Registered</div>
+                <div className="reports-print-stat-value">{stats.registered}</div>
+              </td>
+              <td className="reports-print-stat-cell">
+                <div className="reports-print-stat-label">Applied</div>
+                <div className="reports-print-stat-value">{stats.applied}</div>
+              </td>
+              <td className="reports-print-stat-cell">
+                <div className="reports-print-stat-label">Not applied</div>
+                <div className="reports-print-stat-value">{stats.notApplied}</div>
+              </td>
+            </tr>
           </tbody>
         </table>
       </section>
 
       <section className="reports-print-section">
-        <h2 className="reports-print-section-title">By support category</h2>
-        <table className="reports-print-table">
+        <h2 className="reports-print-section-title">Applicants by support category</h2>
+        <table className="reports-print-table reports-print-table-compact">
           <thead>
             <tr>
               <th className="reports-print-th">Category</th>
-              <th className="reports-print-th">Applicants</th>
+              <th className="reports-print-th reports-print-th-numeric">Applicants</th>
             </tr>
           </thead>
           <tbody>
-            {stats.byCategory.map((c) => (
-              <tr key={c.category_code}>
-                <td className="reports-print-td">{CATEGORY_LABELS[c.category_code] || c.category_name}</td>
-                <td className="reports-print-td">{c.applicants}</td>
+            {stats.byCategory.length === 0 ? (
+              <tr>
+                <td colSpan={2} className="reports-print-td reports-print-td-muted">
+                  No applications in this period.
+                </td>
               </tr>
-            ))}
+            ) : (
+              stats.byCategory.map((c) => (
+                <tr key={c.category_code}>
+                  <td className="reports-print-td">{CATEGORY_LABELS[c.category_code] || c.category_name}</td>
+                  <td className="reports-print-td reports-print-td-numeric">{c.applicants}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </section>
 
-      <section className="reports-print-section">
-        <h2 className="reports-print-section-title">Requested support breakdown</h2>
-        <table className="reports-print-table">
-          <thead>
-            <tr>
-              <th className="reports-print-th">Purpose</th>
-              <th className="reports-print-th">Applications</th>
-            </tr>
-          </thead>
-          <tbody>
-            {topBars.map((b) => (
-              <tr key={b.label}>
-                <td className="reports-print-td">{b.label}</td>
-                <td className="reports-print-td">{b.applications}</td>
+      {!hasTypeGroups && purposeRows.length > 0 ? (
+        <section className="reports-print-section">
+          <h2 className="reports-print-section-title">Support purpose summary</h2>
+          <table className="reports-print-table reports-print-table-compact">
+            <thead>
+              <tr>
+                <th className="reports-print-th">Purpose</th>
+                <th className="reports-print-th reports-print-th-numeric">Applicants</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+            </thead>
+            <tbody>
+              {purposeRows.map((b) => (
+                <tr key={b.label}>
+                  <td className="reports-print-td">{b.label}</td>
+                  <td className="reports-print-td reports-print-td-numeric">{b.applications}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
 
-      <section className="reports-print-section reports-print-page-break">
-        <h2 className="reports-print-section-title">Registered ({stats.registered})</h2>
+      {hasTypeGroups ? <SupportTypePrintSections groups={supportTypeGroups} /> : null}
+
+      <section className="reports-print-section reports-print-section-roster reports-print-page-break">
+        <h2 className="reports-print-section-title">Register — all registered ({registeredPeople.length})</h2>
         <table className="reports-print-table reports-print-roster">
           <thead>
             <tr>
-              <th className="reports-print-th">No.</th>
+              <th className="reports-print-th">Reg. no.</th>
               <th className="reports-print-th">Name</th>
               <th className="reports-print-th">Type</th>
               <th className="reports-print-th">Phone</th>
               <th className="reports-print-th">Community</th>
               <th className="reports-print-th">Disability</th>
               <th className="reports-print-th">District</th>
-              <th className="reports-print-th">Registered</th>
+              <th className="reports-print-th">Reg. date</th>
             </tr>
           </thead>
           <tbody>
             {registeredPeople.map((p) => (
               <tr key={p.applicant_ref}>
-                <td className="reports-print-td">{p.applicant_ref}</td>
-                <td className="reports-print-td">{p.display_name}</td>
+                <td className="reports-print-td reports-print-td-mono">{p.applicant_ref}</td>
+                <td className="reports-print-td">{personNameCell(p)}</td>
                 <td className="reports-print-td">{p.registration_type === "caregiver" ? "Caregiver" : "PWD"}</td>
                 <td className="reports-print-td">{p.phone || "—"}</td>
                 <td className="reports-print-td">{p.community || "—"}</td>
-                <td className="reports-print-td">{p.disability_category || "—"}</td>
+                <td className="reports-print-td reports-print-td-wrap">{p.disability_category || "—"}</td>
                 <td className="reports-print-td">{p.district_name}</td>
-                <td className="reports-print-td">{formatDate(p.registered_at)}</td>
+                <td className="reports-print-td reports-print-td-nowrap">{formatDate(p.registered_at)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </section>
 
-      <section className="reports-print-section reports-print-page-break">
-        <h2 className="reports-print-section-title">Applied ({stats.applied})</h2>
+      <section className="reports-print-section reports-print-section-roster reports-print-page-break">
+        <h2 className="reports-print-section-title">Applied for support ({appliedPeople.length})</h2>
         <table className="reports-print-table reports-print-roster">
           <thead>
             <tr>
-              <th className="reports-print-th">No.</th>
+              <th className="reports-print-th">Reg. no.</th>
               <th className="reports-print-th">Name</th>
               <th className="reports-print-th">App. ref.</th>
-              <th className="reports-print-th">Year</th>
               <th className="reports-print-th">Category</th>
-              <th className="reports-print-th">Requested</th>
               <th className="reports-print-th">Status</th>
+              <th className="reports-print-th">App. date</th>
             </tr>
           </thead>
           <tbody>
             {appliedPeople.map((p) => (
               <tr key={`${p.applicant_ref}-${p.application_reference}`}>
-                <td className="reports-print-td">{p.applicant_ref}</td>
-                <td className="reports-print-td">{p.display_name}</td>
-                <td className="reports-print-td">{p.application_reference}</td>
-                <td className="reports-print-td">{p.application_year}</td>
+                <td className="reports-print-td reports-print-td-mono">{p.applicant_ref}</td>
+                <td className="reports-print-td">{personNameCell(p)}</td>
+                <td className="reports-print-td reports-print-td-mono">{p.application_reference}</td>
                 <td className="reports-print-td">{p.category_name}</td>
-                <td className="reports-print-td">
-                  {p.amount_requested_pesewas != null ? pesewasToGhs(p.amount_requested_pesewas) : "—"}
-                </td>
                 <td className="reports-print-td">{STATUS_LABELS[p.status] || p.status}</td>
+                <td className="reports-print-td reports-print-td-nowrap">{formatDate(p.applied_at)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </section>
 
-      <section className="reports-print-section reports-print-page-break">
-        <h2 className="reports-print-section-title">Registered, not applied ({stats.notApplied})</h2>
+      <section className="reports-print-section reports-print-section-roster reports-print-page-break">
+        <h2 className="reports-print-section-title">Registered, not applied ({notAppliedPeople.length})</h2>
         <table className="reports-print-table reports-print-roster">
           <thead>
             <tr>
-              <th className="reports-print-th">No.</th>
+              <th className="reports-print-th">Reg. no.</th>
               <th className="reports-print-th">Name</th>
               <th className="reports-print-th">Type</th>
               <th className="reports-print-th">Phone</th>
               <th className="reports-print-th">Community</th>
               <th className="reports-print-th">Disability</th>
               <th className="reports-print-th">District</th>
+              <th className="reports-print-th">Reg. date</th>
             </tr>
           </thead>
           <tbody>
             {notAppliedPeople.map((p) => (
               <tr key={p.applicant_ref}>
-                <td className="reports-print-td">{p.applicant_ref}</td>
-                <td className="reports-print-td">{p.display_name}</td>
+                <td className="reports-print-td reports-print-td-mono">{p.applicant_ref}</td>
+                <td className="reports-print-td">{personNameCell(p)}</td>
                 <td className="reports-print-td">{p.registration_type === "caregiver" ? "Caregiver" : "PWD"}</td>
                 <td className="reports-print-td">{p.phone || "—"}</td>
                 <td className="reports-print-td">{p.community || "—"}</td>
-                <td className="reports-print-td">{p.disability_category || "—"}</td>
+                <td className="reports-print-td reports-print-td-wrap">{p.disability_category || "—"}</td>
                 <td className="reports-print-td">{p.district_name}</td>
+                <td className="reports-print-td reports-print-td-nowrap">{formatDate(p.registered_at)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </section>
+
+      <footer className="reports-print-footer">
+        <p>End of report · {filterLabel}{scopeLabel ? ` · ${scopeLabel}` : ""}</p>
+      </footer>
     </div>
   );
+
+  return createPortal(sheet, document.body);
 }

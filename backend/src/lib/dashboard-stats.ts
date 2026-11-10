@@ -7,6 +7,10 @@ import {
   sqlProfileHasAppliedForSupportYear,
   sqlProfileHasSubstantiveApplicationAnyYear,
 } from "../lib/applications-core.ts";
+import { ACTIVE_SUPPORT_CATEGORY_CODES } from "./constants.ts";
+
+const ACTIVE_CAT_SQL = ACTIVE_SUPPORT_CATEGORY_CODES.map(() => "?").join(", ");
+const ACTIVE_CAT_PARAMS = [...ACTIVE_SUPPORT_CATEGORY_CODES];
 
 export type YearCategorySlice = {
   category_code: string;
@@ -123,16 +127,26 @@ export function loadYearDashboardStats(user: AuthUser, year: number | null = cur
             COALESCE(SUM(a.amount_requested_pesewas), 0) AS requested_pesewas
      FROM applications a
      JOIN support_categories sc ON sc.code = a.category_code
-     WHERE ${appliedWhere.sql}
+     WHERE ${appliedWhere.sql} AND a.category_code IN (${ACTIVE_CAT_SQL})
      GROUP BY a.category_code
      ORDER BY applicants DESC`,
-    appliedWhere.params,
+    [...appliedWhere.params, ...ACTIVE_CAT_PARAMS],
   );
 
   const educationBars = all<{ label: string; requested_pesewas: number; applications: number }>(
-    `SELECT COALESCE(NULLIF(TRIM(ed.support_type), ''), 'Educational support (unspecified)') AS label,
+    `SELECT CASE
+              WHEN ed.education_mode = 'Informal' OR ed.apprenticeship_type IS NOT NULL THEN
+                'Apprenticeship — ' || COALESCE(NULLIF(TRIM(ed.apprenticeship_type), ''), 'Unspecified')
+              WHEN LOWER(COALESCE(ed.support_type, '')) LIKE '%technical%' THEN
+                'Technical aid' ||
+                CASE WHEN COALESCE(NULLIF(TRIM(ed.device_type), ''), NULLIF(TRIM(ed.device_key), ''), NULLIF(TRIM(ed.device_other), '')) IS NOT NULL
+                  THEN ' (' || COALESCE(NULLIF(TRIM(ed.device_type), ''), NULLIF(TRIM(ed.device_key), ''), NULLIF(TRIM(ed.device_other), '')) || ')'
+                  ELSE ''
+                END
+              ELSE COALESCE(NULLIF(TRIM(ed.support_type), ''), 'Education (unspecified)')
+            END AS label,
             COALESCE(SUM(a.amount_requested_pesewas), 0) AS requested_pesewas,
-            COUNT(*) AS applications
+            COUNT(DISTINCT a.applicant_profile_id) AS applications
      FROM applications a
      JOIN education_details ed ON ed.application_id = a.id
      WHERE ${appliedWhere.sql} AND a.category_code = 'education'
@@ -156,21 +170,6 @@ export function loadYearDashboardStats(user: AuthUser, year: number | null = cur
     appliedWhere.params,
   );
 
-  const assistiveBars = all<{ label: string; requested_pesewas: number; applications: number }>(
-    `SELECT COALESCE(
-              NULLIF(TRIM(hd.assistive_device_type), ''),
-              NULLIF(TRIM(hd.assistive_device_key), ''),
-              'Assistive device (unspecified)'
-            ) AS label,
-            COALESCE(SUM(a.amount_requested_pesewas), 0) AS requested_pesewas,
-            COUNT(*) AS applications
-     FROM applications a
-     JOIN health_details hd ON hd.application_id = a.id
-     WHERE ${appliedWhere.sql} AND a.category_code = 'assistive_device'
-     GROUP BY label`,
-    appliedWhere.params,
-  );
-
   const incomeBars = all<{ label: string; requested_pesewas: number; applications: number }>(
     `SELECT COALESCE(
               NULLIF(TRIM(iad.business_activity), ''),
@@ -190,33 +189,17 @@ export function loadYearDashboardStats(user: AuthUser, year: number | null = cur
     appliedWhere.params,
   );
 
-  const caregiverBars = all<{ label: string; requested_pesewas: number; applications: number }>(
-    `SELECT COALESCE(
-              NULLIF(TRIM(csd.purpose), ''),
-              NULLIF(TRIM(csd.purpose_other), ''),
-              NULLIF(TRIM(a.purpose_summary), ''),
-              'Caregiver support (unspecified)'
-            ) AS label,
-            COALESCE(SUM(a.amount_requested_pesewas), 0) AS requested_pesewas,
-            COUNT(*) AS applications
-     FROM applications a
-     JOIN caregiver_support_details csd ON csd.application_id = a.id
-     WHERE ${appliedWhere.sql} AND a.category_code = 'caregivers'
-     GROUP BY label`,
-    appliedWhere.params,
-  );
-
-  const detailBars = [...educationBars, ...healthBars, ...assistiveBars, ...incomeBars, ...caregiverBars];
+  const detailBars = [...educationBars, ...healthBars, ...incomeBars];
   const coveredIds = new Set(
     all<{ id: string }>(
       `SELECT DISTINCT a.id FROM applications a
        LEFT JOIN education_details ed ON ed.application_id = a.id
        LEFT JOIN health_details hd ON hd.application_id = a.id
        LEFT JOIN income_activity_details iad ON iad.application_id = a.id
-       LEFT JOIN caregiver_support_details csd ON csd.application_id = a.id
        WHERE ${appliedWhere.sql}
-         AND (ed.application_id IS NOT NULL OR hd.application_id IS NOT NULL OR iad.application_id IS NOT NULL OR csd.application_id IS NOT NULL)`,
-      appliedWhere.params,
+         AND a.category_code IN (${ACTIVE_CAT_SQL})
+         AND (ed.application_id IS NOT NULL OR hd.application_id IS NOT NULL OR iad.application_id IS NOT NULL)`,
+      [...appliedWhere.params, ...ACTIVE_CAT_PARAMS],
     ).map((r) => r.id),
   );
 
@@ -226,9 +209,9 @@ export function loadYearDashboardStats(user: AuthUser, year: number | null = cur
             COALESCE(NULLIF(TRIM(a.purpose_summary), ''), sc.name || ' (purpose not specified)') AS label,
             COALESCE(a.amount_requested_pesewas, 0) AS requested_pesewas
      FROM applications a
-     JOIN support_categories sc ON sc.code = a.category_code
-     WHERE ${appliedWhere.sql}`,
-    appliedWhere.params,
+     JOIN support_categories sc ON sc.code = a.category_code AND sc.is_active = 1
+     WHERE ${appliedWhere.sql} AND a.category_code IN (${ACTIVE_CAT_SQL})`,
+    [...appliedWhere.params, ...ACTIVE_CAT_PARAMS],
   ).filter((row) => !coveredIds.has(row.id));
   for (const row of orphanApps) {
     const prev = fallbackGrouped.get(row.label) || { requested_pesewas: 0, applications: 0 };

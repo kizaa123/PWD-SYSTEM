@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { api, formatSupportYearWithDateTime, formatSupportYearWithDateTimeMobileLines, STATUS_LABELS } from "../lib/api";
+import { api, STATUS_LABELS } from "../lib/api";
+import { formatAppDateFromIso } from "../lib/dateFormat";
 import { ApplyForSupportLink } from "../components/ApplyForSupportLink";
 import { RegistrationCycleStatus } from "../components/RegistrationCycleStatus";
 import { ApplicationReferenceLink } from "../components/ApplicationReferenceLink";
@@ -277,12 +278,9 @@ export function ApplicationsPage() {
           <table className="data-table text-left text-sm">
             <thead className="bg-canvas text-muted">
               <tr>
+                <th className="table-cell-nowrap-sm">App. date</th>
                 <th>Reference</th>
                 <th>Phone</th>
-                <th className="table-cell-date-apps">
-                  <span className="sm:hidden">Year / date</span>
-                  <span className="hidden sm:inline">Year · date &amp; time</span>
-                </th>
                 <th>Applicant</th>
                 <th>Category</th>
                 <th className="table-cell-nowrap-sm min-w-[5.5rem]">
@@ -306,11 +304,11 @@ export function ApplicationsPage() {
               ) : (
                 filteredRegisterRows.map((r) => {
                   const app = r.current_year_application;
-                  const eventAt = app?.created_at || r.created_at || new Date().toISOString();
-                  const year = app?.application_year ?? CURRENT_APPLICATION_YEAR;
-                  const mobileWhen = formatSupportYearWithDateTimeMobileLines(year, eventAt);
                   return (
                     <tr key={r.id} className="border-t border-canvas">
+                      <td className="whitespace-nowrap text-xs sm:text-sm">
+                        {app ? formatAppDateFromIso(app.created_at) || "—" : "—"}
+                      </td>
                       <td>
                         {app ? (
                           <ApplicationReferenceLink applicationId={app.id}>{app.reference}</ApplicationReferenceLink>
@@ -319,17 +317,6 @@ export function ApplicationsPage() {
                         )}
                       </td>
                       <td>{registrationListPrimaryPhone(r)}</td>
-                      <td className="table-cell-date-apps text-[11px] sm:text-sm">
-                        <span className="sm:hidden">
-                          <span className="block font-semibold text-navy">{mobileWhen.line1}</span>
-                          {mobileWhen.line2 ? (
-                            <span className="mt-0.5 block text-[10px] font-normal text-muted">{mobileWhen.line2}</span>
-                          ) : null}
-                        </span>
-                        <span className="hidden sm:inline sm:whitespace-nowrap">
-                          {formatSupportYearWithDateTime(year, eventAt)}
-                        </span>
-                      </td>
                       <td>{registrationListPrimaryName(r)}</td>
                       <td>{app?.category_name || "—"}</td>
                       <td className="text-sm leading-snug">
@@ -367,11 +354,8 @@ export function ApplicationsPage() {
           <table className="data-table text-left text-sm">
             <thead className="bg-canvas text-muted">
               <tr>
+                <th className="table-cell-nowrap-sm">App. date</th>
                 <th>Reference</th>
-                <th className="table-cell-date-apps">
-                  <span className="sm:hidden">Year / date</span>
-                  <span className="hidden sm:inline">Year · date &amp; time</span>
-                </th>
                 <th>Applicant</th>
                 <th>Category</th>
                 <th className="table-cell-nowrap-sm min-w-[5.5rem]">
@@ -394,22 +378,13 @@ export function ApplicationsPage() {
                 </tr>
               ) : (
                 rows.map((r) => {
-                  const mobileWhen = formatSupportYearWithDateTimeMobileLines(r.application_year, r.created_at);
                   return (
                     <tr key={r.id} className="border-t border-canvas">
+                      <td className="whitespace-nowrap text-xs sm:text-sm">
+                        {formatAppDateFromIso(r.created_at) || "—"}
+                      </td>
                       <td>
                         <ApplicationReferenceLink applicationId={r.id}>{r.reference}</ApplicationReferenceLink>
-                      </td>
-                      <td className="table-cell-date-apps text-[11px] sm:text-sm">
-                        <span className="sm:hidden">
-                          <span className="block font-semibold text-navy">{mobileWhen.line1}</span>
-                          {mobileWhen.line2 ? (
-                            <span className="mt-0.5 block text-[10px] font-normal text-muted">{mobileWhen.line2}</span>
-                          ) : null}
-                        </span>
-                        <span className="hidden sm:inline sm:whitespace-nowrap">
-                          {formatSupportYearWithDateTime(r.application_year, r.created_at)}
-                        </span>
                       </td>
                       <td>{r.full_name}</td>
                       <td>{r.category_name}</td>
