@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, STATUS_LABELS } from "../lib/api";
-import { formatAppDateFromIso } from "../lib/dateFormat";
+import { formatAppDateFromIso, formatApplicationApplyDateFromIso } from "../lib/dateFormat";
 import { ApplyForSupportLink } from "../components/ApplyForSupportLink";
 import { RegistrationCycleStatus } from "../components/RegistrationCycleStatus";
 import { ApplicationReferenceLink } from "../components/ApplicationReferenceLink";
@@ -11,7 +11,7 @@ import { PageTitle } from "../components/PageTitle";
 import { useAuth } from "../lib/auth";
 import { registrationListPrimaryName, registrationListPrimaryPhone } from "../lib/registrationListDisplay";
 import { canOpenApplicationsList, visibleApplicationStatuses, workflowQueues } from "../lib/workflowAccess";
-import { registrationCycleSortRank } from "../lib/registrationCycleSort";
+import { compareApplicationFolderByApplyOrder, compareApplicationRowByApplyOrder } from "../lib/registrationCycleSort";
 import { applicationEndorsedByDisplay } from "../lib/applicationEndorsedBy";
 
 type ApplicationRow = {
@@ -25,6 +25,7 @@ type ApplicationRow = {
   application_year: number;
   purpose_summary: string | null;
   created_at: string;
+  submitted_at?: string | null;
   endorsed_by_name?: string | null;
   applied_current_year?: boolean;
   office_use_qualified?: string | null;
@@ -41,6 +42,7 @@ type CurrentYearApplication = {
   application_year: number;
   office_use_qualified?: string | null;
   endorsing_officer_name?: string | null;
+  submitted_at?: string | null;
 };
 
 type RegisterFolderRow = {
@@ -176,30 +178,7 @@ export function ApplicationsPage() {
     } else if (status === APPLIED_FOLDER_STATUS) {
       list = list.filter((r) => r.applied_current_year);
     }
-    const sorted = [...list].sort((a, b) => {
-      if (status === "") {
-        const appA = a.current_year_application;
-        const appB = b.current_year_application;
-        const rankA = registrationCycleSortRank(
-          {
-            status: appA?.status ?? "",
-            applied_current_year: a.applied_current_year,
-            office_use_qualified: appA?.office_use_qualified,
-          },
-          Boolean(appA),
-        );
-        const rankB = registrationCycleSortRank(
-          {
-            status: appB?.status ?? "",
-            applied_current_year: b.applied_current_year,
-            office_use_qualified: appB?.office_use_qualified,
-          },
-          Boolean(appB),
-        );
-        if (rankA !== rankB) return rankA - rankB;
-      }
-      return registrationListPrimaryName(a).localeCompare(registrationListPrimaryName(b));
-    });
+    const sorted = [...list].sort(compareApplicationFolderByApplyOrder);
     const query = q.trim().toLowerCase();
     if (!query) return sorted;
     return sorted.filter(
@@ -211,6 +190,11 @@ export function ApplicationsPage() {
         (a.current_year_application?.reference || "").toLowerCase().includes(query),
     );
   }, [registerRows, q, status]);
+
+  const sortedWorkflowRows = useMemo(
+    () => [...rows].sort(compareApplicationRowByApplyOrder),
+    [rows],
+  );
 
   const pageTitle = inApplicationFolder
     ? status === ""
@@ -325,7 +309,7 @@ export function ApplicationsPage() {
                   return (
                     <tr key={r.id} className="border-t border-canvas">
                       <td className="whitespace-nowrap text-xs sm:text-sm">
-                        {app ? formatAppDateFromIso(app.created_at) || "—" : "—"}
+                        {app ? formatApplicationApplyDateFromIso(app) || "—" : "—"}
                       </td>
                       <td>
                         {app ? (
@@ -388,18 +372,18 @@ export function ApplicationsPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {sortedWorkflowRows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-3 py-6 text-center text-sm text-muted">
                     No records match this search.
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => {
+                sortedWorkflowRows.map((r) => {
                   return (
                     <tr key={r.id} className="border-t border-canvas">
                       <td className="whitespace-nowrap text-xs sm:text-sm">
-                        {formatAppDateFromIso(r.created_at) || "—"}
+                        {formatApplicationApplyDateFromIso(r) || formatAppDateFromIso(r.created_at) || "—"}
                       </td>
                       <td>
                         <ApplicationReferenceLink applicationId={r.id}>{r.reference}</ApplicationReferenceLink>

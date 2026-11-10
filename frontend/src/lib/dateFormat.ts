@@ -26,6 +26,15 @@ export function formatAppDateFromIso(iso: string | null | undefined): string {
   return formatAppDate(d);
 }
 
+/** Application table: date the person applied (submit time, else file opened). */
+export function formatApplicationApplyDateFromIso(
+  app: { submitted_at?: string | null; created_at?: string } | null | undefined,
+): string {
+  if (!app) return "";
+  const iso = app.submitted_at?.trim() || app.created_at;
+  return formatAppDateFromIso(iso);
+}
+
 /** e.g. 04.Nov.2026 3:02 PM */
 export function formatAppDateTime(d: Date): string {
   return `${formatAppDate(d)} ${formatAppTime(d)}`;
